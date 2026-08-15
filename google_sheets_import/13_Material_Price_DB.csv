@@ -1,0 +1,17 @@
+MATERIAL PRICE DATABASE
+SKU Code,Material Description & Specification,Trade Category,Default Supplier,Unit,Standard Price ($),Lead Time (Days)
+MAT-101,Custom Shaker Base Cabinet Box,Cabinetry,Craftsman Cabinet Co.,Set,700.0,14
+MAT-102,Custom Shaker Wall Cabinet Box,Cabinetry,Craftsman Cabinet Co.,Set,350.0,14
+MAT-103,Calacatta Gold Quartz Slab (3cm),Countertops,Apex Stone & Tile,SqFt,75.0,7
+MAT-104,Engineered Oak Hardwood Plank,Flooring,Prime Flooring Dist.,SqFt,6.5,5
+MAT-105,Hardwood Acoustic Underlayment,Flooring,Prime Flooring Dist.,SqFt,0.65,3
+MAT-106,Recessed 6-inch LED Dimmable Fixture,Electrical,Lumens Direct,Unit,45.0,2
+MAT-107,Decorative Pendant Light Fixture,Electrical,Lumens Direct,Unit,220.0,5
+MAT-108,Architectural Primer (5-Gal Pail),Paint,Sherwin-Williams Pro,Pail,45.0,1
+MAT-109,Premium Satin Enamel (5-Gal Pail),Paint,Sherwin-Williams Pro,Pail,65.0,1
+MAT-110,Commercial Stainless Sink & Faucet,Plumbing,Ferguson Plumbing,Set,950.0,7
+MAT-111,Ceramic Subway Backsplash Tile,Tile,Apex Stone & Tile,SqFt,8.5,4
+MAT-112,Drywall Sheet 1/2-inch x 8ft,Drywall,Home Depot Pro,Sheet,14.5,1
+MAT-113,All-Purpose Joint Compound Box,Drywall,Home Depot Pro,Box,18.0,1
+MAT-114,Pressure Treated 2x4 Lumber Stud,Framing,Home Depot Pro,Unit,6.25,1
+MAT-115,Interior Mold-Resistant Silicone Caulk,Finish,Home Depot Pro,Tube,8.5,1

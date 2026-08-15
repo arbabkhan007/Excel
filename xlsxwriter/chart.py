@@ -478,7 +478,7 @@ class Chart(xmlwriter.XMLwriter):
         # Switch name and name_formula parameters if required.
 
         # Name looks like a formula, use it to set name_formula.
-        if name is not None and re.match('/^=[^!]+!\$/', name):
+        if name is not None and isinstance(name, str) and name.startswith('=') and '!' in name:
             name_formula = name
             name = ''
 
@@ -2090,7 +2090,7 @@ class Chart(xmlwriter.XMLwriter):
         ]
 
         if not horiz:
-            attributes = [()]
+            attributes = []
 
         self._xml_empty_tag('a:bodyPr', attributes)
 
@@ -2207,7 +2207,7 @@ class Chart(xmlwriter.XMLwriter):
             has_color = 1
 
         # Add the lang type to the attributes.
-        style_attributes = [('lang', lang, style_attributes)]
+        style_attributes = [('lang', lang)] + style_attributes
 
         if latin_attributes or has_color:
             self._xml_start_tag('a:rPr', style_attributes)
@@ -2311,7 +2311,7 @@ class Chart(xmlwriter.XMLwriter):
 
         # Write the fill elements for solid charts such as pie and bar.
         if 'fill' in series and series['fill']['defined']:
-            if series.fill['none']:
+            if 'none' in series['fill'] and series['fill']['none']:
 
                 # Write the a:noFill element.
                 self._write_a_no_fill()
@@ -2752,9 +2752,10 @@ class Chart(xmlwriter.XMLwriter):
         self._xml_end_tag('a:p')
         self._xml_end_tag('c:txPr')
 
-    def _write_a_latin(self):
+    def _write_a_latin(self, attributes=None):
         # Write the <a:latin> element.
-        attributes = _
+        if attributes is None:
+            attributes = []
 
         self._xml_empty_tag('a:latin', attributes)
 

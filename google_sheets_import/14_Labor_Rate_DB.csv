@@ -1,0 +1,14 @@
+LABOR RATE DATABASE
+Trade Code,Craft Role / Trade Description,Base Wage ($/hr),Burden & Ins. %,Burdened Cost ($/hr),Billing Rate ($/hr),OT Billing Rate ($/hr)
+TRD-01,General Construction Laborer,25.0,25%,31.25,40.0,60.0
+TRD-02,Skilled Carpenter & Framing Lead,35.0,28%,44.8,55.0,82.5
+TRD-03,Master Millwork & Cabinet Specialist,42.0,28%,53.76,65.0,97.5
+TRD-04,Drywall Hanger & Finisher,30.0,25%,37.5,45.0,67.5
+TRD-05,Interior Painter & Trim Finisher,28.0,25%,35.0,45.0,67.5
+TRD-06,Licensed Electrician (Master),48.0,30%,62.4,75.0,112.5
+TRD-07,Licensed Plumber & Gas Fitter,48.0,30%,62.4,75.0,112.5
+TRD-08,HVAC Duct & Mechanical Technician,42.0,30%,54.6,70.0,105.0
+TRD-09,Ceramic & Stone Tile Setter,35.0,26%,44.1,55.0,82.5
+TRD-10,Hardwood Flooring Installer,32.0,26%,40.32,50.0,75.0
+TRD-11,Project Supervisor / QC Manager,50.0,32%,66.0,75.0,112.5
+TRD-12,Site Safety & Sanitization Tech,22.0,25%,27.5,35.0,52.5

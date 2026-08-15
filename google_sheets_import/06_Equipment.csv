@@ -1,0 +1,11 @@
+EQUIPMENT RENTAL & SPECIAL TOOLING COST SHEET
+Equip. ID,Equipment Name & Specification,Ownership Type,Rate Period,Rate ($),Qty / Days,Delivery Fee ($),Total Cost ($)
+EQP-301,20-Yard Roll-Off Waste Dumpster Rental,Rental,Flat Rate,650.0,1,200.0,850.0
+EQP-302,HEPA Commercial Air Scrubber & Filtration,Owned / Allowance,Daily Rate,45.0,10,50.0,500.0
+EQP-303,Commercial Wet Tile Saw & Diamond Blade,Owned / Allowance,Daily Rate,35.0,4,0.0,140.0
+EQP-304,Hardwood Floor Drum Sander & Edger Kit,Rental,Daily Rate,85.0,3,50.0,305.0
+EQP-305,Interior Aluminum Scaffolding & Work Lift,Rental,Weekly Rate,250.0,2,75.0,575.0
+EQP-306,Temporary Site Distribution Electrical Box,Owned / Allowance,Flat Rate,120.0,1,0.0,120.0
+EQP-307,High-Capacity Dehumidifier & Blower Array,Rental,Daily Rate,40.0,5,25.0,225.0
+EQP-308,Material Hoist & Cabinet Dolly Package,Owned / Allowance,Flat Rate,150.0,1,0.0,150.0
+,TOTAL DIRECT EQUIPMENT & RENTAL COST ($),,,,,,2850.0

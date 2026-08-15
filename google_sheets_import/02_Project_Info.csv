@@ -1,0 +1,27 @@
+"PROJECT, CLIENT & CONTRACTOR SETUP (GLOBAL PARAMETERS)"
+
+Category,Parameter Name,Value / Configuration,Notes
+Project,Project Name,Luxury Kitchen & Living Area Remodel,Editable
+Project,Client / Owner Name,Robert Sterling / Apex Properties,Editable
+Project,Jobsite Location,"742 Evergreen Terrace, Suite 300",Editable
+Project,Estimate Number,EST-2026-042,Editable
+Project,Estimate Date,2026-07-31,Editable
+Project,Proposal Expiration Date,2026-08-30,Editable
+Project,Scope of Work Summary,"Full kitchen demolition, custom cabinetry, quartz countertops, electrical & plumbing relocation, hardwood flooring, and ambient LED lighting.",Editable
+
+Contractor,Contractor / Company Name,Novality Construction & Design LLC,Editable
+Contractor,Primary Contact / Estimator,"David Novality, Master Contractor",Editable
+Contractor,Company Business Address,"100 Professional Way, Suite 400",Editable
+Contractor,Phone Number,(555) 382-9100,Editable
+Contractor,Email Address,estimating@novalitystore.com,Editable
+Contractor,Contractor License #,LIC-GEN-884210,Editable
+
+Financial Rates,Sales Tax Rate (%),8.25%,Global Rate
+Financial Rates,Preferred Client Discount Rate (%),2.50%,Global Rate
+Financial Rates,Contingency Allowance Rate (%),5.00%,Global Rate
+Financial Rates,General Overhead Rate (%),10.00%,Global Rate
+Financial Rates,Target Profit Margin (%),22.50%,Global Rate
+Financial Rates,Default Material Markup (%),20.00%,Global Rate
+Financial Rates,Default Labor Markup (%),35.00%,Global Rate
+Financial Rates,Default Subcontractor Markup (%),15.00%,Global Rate
+Financial Rates,Default Equipment Markup (%),25.00%,Global Rate

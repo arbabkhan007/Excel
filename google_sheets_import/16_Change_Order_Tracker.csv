@@ -1,0 +1,11 @@
+PROJECT CHANGE ORDER TRACKER & BID MODIFICATION LOG
+CO Number,Date Req.,Description of Scope Modification,Requested By,Direct Cost ($),Markup %,CO Total Price ($),Schedule Add,Approval Status,Date Approved
+CO-001,2026-08-05,Upgrade Quartz Island Countertop to Waterfall Edge,Robert Sterling,1200.0,20%,1440.0,2 Days,Approved,2026-08-06
+CO-002,2026-08-10,Add 4 Additional Dimmable Recessed LED Lights,Robert Sterling,450.0,25%,562.5,1 Day,Approved,2026-08-11
+CO-003,2026-08-15,Relocate Secondary Laundry Plumbing Drain Line,Robert Sterling,850.0,20%,1020.0,1 Day,Pending,-
+TOTAL CHANGE ORDER LOG ($),,,,2500.0,,3022.5,,,
+
+CHANGE ORDER CONTRACT PRICE IMPACT
+Original Contract Bid Price ($),78685.51
+Total Approved Change Orders ($),2002.5
+REVISED GRAND TOTAL CONTRACT PRICE ($),80688.01

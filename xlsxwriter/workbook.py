@@ -934,7 +934,7 @@ class Workbook(xmlwriter.XMLwriter):
 
         for chart in self.charts:
 
-            for c_range, r_id in chart.formula_ids.iteritems():
+            for c_range, r_id in chart.formula_ids.items():
 
                 # Skip if the series has user defined data.
                 if chart.formula_data[r_id] is not None:
@@ -969,13 +969,12 @@ class Workbook(xmlwriter.XMLwriter):
                 data = worksheet._get_range_data(*cells)
 
                 # Convert shared string indexes to strings.
-                # for token in data:
-                #    if ref token:
-                #        token = self.str_array.[ token[sst_id] ]
-
-                #        # Ignore rich strings for now. Deparse later if necessary.
-                #        if token =~ m{^<r>} and token =~ m{</r>$}:
-                #            token = ''
+                decoded_data = []
+                for token in data:
+                    if isinstance(token, int):
+                        token = self.str_table._get_string(token)
+                    decoded_data.append(token)
+                data = decoded_data
 
                 # Add the data to the chart.
                 chart.formula_data[r_id] = data
@@ -996,7 +995,7 @@ class Workbook(xmlwriter.XMLwriter):
             return None
 
         # Split the cell range into 2 cells or else use single cell for both.
-        if cells.find(':'):
+        if ':' in cells:
             (cell_1, cell_2) = cells.split(':')
         else:
             (cell_1, cell_2) = (cells, cells)

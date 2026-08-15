@@ -138,3 +138,8 @@ class SharedStringTable(object):
 
     def _get_strings(self):
         return sorted(self.string_table, key=self.string_table.__getitem__)
+
+    def _get_string(self, index):
+        if not hasattr(self, '_index_to_string') or len(self._index_to_string) != len(self.string_table):
+            self._index_to_string = {idx: s for s, idx in self.string_table.items()}
+        return self._index_to_string.get(index, str(index))

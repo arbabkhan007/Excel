@@ -1,0 +1,15 @@
+ITEMIZED MATERIALS COST SHEET
+Item SKU,Material Description & Specification,Trade Category,Supplier / Vendor,Quantity,Unit,Unit Cost ($),Tax / Freight ($),Total Cost ($)
+MAT-101,Custom Shaker Base Cabinets,Cabinetry,Craftsman Cabinet Co.,12,Set,700.0,140.0,8540.0
+MAT-102,Custom Shaker Wall & Pantry Cabinets,Cabinetry,Craftsman Cabinet Co.,8,Set,350.0,70.0,2870.0
+MAT-103,Calacatta Gold Quartz Slab,Countertops,Apex Stone & Tile,60,SqFt,75.0,300.0,4800.0
+MAT-104,Engineered Oak Hardwood Flooring,Flooring,Prime Flooring Dist.,450,SqFt,6.5,225.0,3150.0
+MAT-105,Hardwood Underlayment,Flooring,Prime Flooring Dist.,450,SqFt,0.65,7.5,300.0
+MAT-106,Recessed LED Dimmable Fixture Bundle,Electrical,Lumens Direct,16,Unit,45.0,30.0,750.0
+MAT-107,Kitchen Pendant Lighting Array,Electrical,Lumens Direct,3,Unit,220.0,20.0,680.0
+MAT-108,Architectural Primer (5-Gal Pail),Paint,Sherwin-Williams Pro,4,Pail,45.0,20.0,200.0
+MAT-109,Premium Satin Enamel (5-Gal Pail),Paint,Sherwin-Williams Pro,6,Pail,65.0,30.0,420.0
+MAT-110,Kitchen Sink & Faucet,Plumbing,Ferguson Plumbing,1,Set,950.0,50.0,1000.0
+MAT-111,Ceramic Subway Backsplash Tile,Tile,Apex Stone & Tile,80,SqFt,8.5,40.0,720.0
+MAT-112,Drywall & Trim Lumber Package,Lumber / Prep,Home Depot Pro,1,Lot,650.0,50.0,700.0
+,TOTAL DIRECT MATERIAL COST ($),,,,,,,21650.0

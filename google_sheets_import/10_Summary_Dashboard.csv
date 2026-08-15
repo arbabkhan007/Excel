@@ -1,0 +1,29 @@
+EXECUTIVE CONSTRUCTION SUMMARY DASHBOARD & KPI OVERVIEW
+
+TOTAL ESTIMATED JOB COST,,TOTAL CONTRACT BID PRICE,,TOTAL MARKUP & GROSS PROFIT,,ESTIMATED PROFIT MARGIN %
+"$60,375.00",,"$78,685.51",,"$14,177.50",,19.0%
+
+COST PERFORMANCE BY CATEGORY ($)
+Cost Category,Estimated ($),Actual ($),Variance ($),Status
+Direct Materials,21650.0,20950.0,700.0,UNDER BUDGET
+Direct Labor,16800.0,17200.0,-400.0,OVER BUDGET
+Subcontractors,9750.0,9750.0,0.0,UNDER BUDGET
+Equipment & Rentals,2850.0,2650.0,200.0,UNDER BUDGET
+Permits & Other,1450.0,1450.0,0.0,UNDER BUDGET
+Overhead & Contingency,7875.0,7500.0,375.0,UNDER BUDGET
+TOTAL JOB COSTS,60375.0,59500.0,875.0,UNDER BUDGET
+
+CONTRACT BID & PROFIT BREAKDOWN,,
+Subtotal Direct Costs,52500.0
+Overhead Allowance,5250.0
+Contingency Allowance,2625.0
+Total Professional Markup,14177.5
+Subtotal Bid Selling Price,74552.5
+Preferred Client Discount,-1863.81
+Sales Tax (8.25%),5996.82
+GRAND TOTAL BID PRICE ($),78685.51
+
+COST PERFORMANCE VISUAL SNAPSHOT (EXCEL-SAFE CELL-BASED DASHBOARD)
+Cost Category,Estimated ($),Actual ($),Variance ($),Budget Perf.,Visual Bar (Est.),Visual Bar (Act.)
+Direct Materials,21650.0,20950.0,700.0,ON BUDGET,████████████████████████████████████████████,█████████████████████████████████████████
+Direct Labor,16800.0,17200.0,-400.0,OVER BUDGET,██████████████████████████████████,█████████████████████████████████████
