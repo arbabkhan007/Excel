@@ -21,3 +21,8 @@ build/
 objects.inv
 __pycache__
 
+
+# Generated pet sitting workbooks
+output/
+*.xlsx
+!xlsxwriter/test/comparison/xlsx_files/*.xlsx
