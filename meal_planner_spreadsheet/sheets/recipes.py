@@ -148,6 +148,62 @@ def spec(cfg: Config) -> SheetSpec:
                  "value": "flagged", "fmt": "warn"},
                 {"type": "text", "criteria": "containing",
                  "value": "None listed", "fmt": "good"}]),
+        Col("cost_rank", "Cost rank", 9, "int",
+            formula='=IF(OR({cost_serving}{r}="",NOT(ISNUMBER('
+                    '{cost_serving}{r}))),"",COUNTIFS({cost_serving_first}:'
+                    '{cost_serving_last},"<"&{cost_serving}{r})+'
+                    'COUNTIFS({cost_serving_first}:{cost_serving}{r},'
+                    '{cost_serving}{r}))',
+            hidden=True,
+            note="1 = cheapest a serving. Used by the Recipe Costs "
+                 "page."),
+        Col("match", "Matches the filter", 9, "int",
+            formula='=IF({name}{r}="",0,IF(AND('
+                    'OR(FilterDiet="Any",{diet}{r}=FilterDiet),'
+                    'OR(FilterCategory="Any",{category}{r}='
+                    'FilterCategory),'
+                    'OR(FilterMethod="Any",{method}{r}=FilterMethod),'
+                    'OR(FilterTime=0,AND({total_min}{r}<>"",'
+                    '{total_min}{r}<=FilterTime)),'
+                    'OR(FilterCost=0,AND({cost_serving}{r}<>"",'
+                    'ISNUMBER({cost_serving}{r}),'
+                    '{cost_serving}{r}<=FilterCost)),'
+                    'OR(FilterAllergen="Any",COUNTIFS('
+                    '[[Recipe Ingredients.recipe]],{id}{r},'
+                    '[[Recipe Ingredients.allergen]],FilterAllergen)=0)'
+                    '),1,0))',
+            hidden=True,
+            note="1 when the recipe passes every control on the "
+                 "Dietary Filters page."),
+        Col("match_rank", "Filter rank", 9, "int",
+            formula='=IF({match}{r}=0,"",SUM({match_first}:{match}{r}))',
+            hidden=True),
+        Col("times_planned_rank", "Popularity rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({times_planned_first}:{times_planned_last},">"&{times_planned}{r})+'
+                    'COUNTIFS({times_planned_first}:{times_planned}{r},{times_planned}{r}))',
+            hidden=True, note="1 = planned most often."),
+        Col("calories_rank", "Calorie rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({calories_first}:{calories_last},">"&{calories}{r})+'
+                    'COUNTIFS({calories_first}:{calories}{r},{calories}{r}))',
+            hidden=True, note="1 = most calories a serving."),
+        Col("protein_rank", "Protein rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({protein_first}:{protein_last},">"&{protein}{r})+'
+                    'COUNTIFS({protein_first}:{protein}{r},{protein}{r}))',
+            hidden=True, note="1 = most protein a serving."),
+        Col("fibre_rank", "Fibre rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({fibre_first}:{fibre_last},">"&{fibre}{r})+'
+                    'COUNTIFS({fibre_first}:{fibre}{r},{fibre}{r}))',
+            hidden=True, note="1 = most fibre a serving."),
+        Col("rotation_rank", "Rotation rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({sort_key_first}:'
+                    '{sort_key_last},">"&{sort_key}{r})+'
+                    'COUNTIFS({sort_key_first}:{sort_key}{r},'
+                    '{sort_key}{r}))',
+            hidden=True,
+            note="1 = the recipe you have left alone the longest."),
+        Col("sort_key", "Sort key", 9, "number1",
+            formula='=IF({name}{r}="","",IF({last_cooked}{r}="",99999,'
+                    '{days_since}{r}))', hidden=True),
         Col("plan_scale", "Batches in the shopping window", 12, "number1",
             formula='=IF({id}{r}="",0,SUMIFS([[Meal Plan.scale]],'
                     '[[Meal Plan.recipe]],{id}{r},[[Meal Plan.date]],'

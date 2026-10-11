@@ -2,6 +2,7 @@
 
     python tools/make_download_zip.py
     python tools/make_download_zip.py --product social
+    python tools/make_download_zip.py --product meal
 
 Writes `download/<product>-source.zip` containing the generator, the
 quality tools, the documentation and a `requirements.txt`, all under one
@@ -97,6 +98,44 @@ explains how it is built and what is on each of the 43 tabs;
 SOURCE_CODE_SOCIAL.md is the whole program in one readable document.
 """
 
+MEAL_HOW_TO_RUN = """\
+Automated Meal Planner & Grocery List Spreadsheet
+==================================================
+
+    pip install XlsxWriter
+    python build_meal_planner_workbook.py
+
+The workbook appears in:
+
+    output/Meal Planner & Grocery List.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example data
+    --household "Our House" your household name on the cover and prints
+    --cook "Your Name"      the main cook / planner
+    --servings 6            how many people a meal is normally cooked for
+    --budget 200            the weekly food budget
+    --units Imperial        lead with cups, ounces and pounds
+    --year 2027             the year the planner is built for
+    --week-start Sunday     weeks run Sunday to Saturday
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 200              more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium` so the maths cannot be typed over by accident; the
+cream coloured cells are the ones meant for typing in.
+
+Fill in Settings and Household first, then Ingredients and Recipes, then
+plan some meals - the Grocery List builds itself from the plan and takes
+off whatever the Pantry says you already have.  README_MEAL.md explains
+how it is built and what is on each of the 36 tabs; SOURCE_CODE_MEAL.md
+is the whole program in one readable document.
+"""
+
+
 PRODUCTS = {
     "pet": {
         "folder": "pet-sitting-spreadsheet",
@@ -119,6 +158,17 @@ PRODUCTS = {
         "tools": ["tools/validate_social_workbook.py",
                   "tools/check_social_sample.py"] + SHARED_TOOLS,
         "how_to_run": SOCIAL_HOW_TO_RUN,
+    },
+    "meal": {
+        "folder": "meal-planner-grocery-list",
+        "output": os.path.join(
+            "download", "meal-planner-grocery-list-source.zip"),
+        "files": ["build_meal_planner_workbook.py", "README_MEAL.md",
+                  "SOURCE_CODE_MEAL.md"],
+        "trees": ["meal_planner_spreadsheet"],
+        "tools": ["tools/validate_meal_workbook.py",
+                  "tools/check_meal_sample.py"] + SHARED_TOOLS,
+        "how_to_run": MEAL_HOW_TO_RUN,
     },
 }
 

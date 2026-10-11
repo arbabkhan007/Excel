@@ -97,7 +97,7 @@ LISTS: List[Tuple[str, List[str]]] = [
     ("StoreTypeList", ["Supermarket", "Discounter", "Local grocer",
                        "Butcher", "Fishmonger", "Bakery", "Farm shop",
                        "Market", "Online delivery", "Wholesale",
-                       "Convenience"]),
+                       "Convenience", "Takeaway", "Restaurant"]),
     ("SpendCategoryList", ["Groceries", "Fresh top-up", "Bulk shop",
                            "Takeaway", "Restaurant", "Coffee & drinks",
                            "Work lunch", "School meals", "Snacks",

@@ -1,6 +1,6 @@
 # Pet Sitting & Dog Walking Business Spreadsheet — generator
 
-> **This repository holds two spreadsheet products** built on the same
+> **This repository holds three spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -9,6 +9,9 @@
 > * **Social Media Content Calendar & Analytics Planner** —
 >   [README_SOCIAL.md](README_SOCIAL.md),
 >   `build_social_media_workbook.py`, 43 tabs.
+> * **Automated Meal Planner & Grocery List Spreadsheet** —
+>   [README_MEAL.md](README_MEAL.md),
+>   `build_meal_planner_workbook.py`, 36 tabs.
 
 Python code that builds a finished, ready-to-sell Excel workbook for pet
 sitters and dog walkers.
@@ -98,7 +101,7 @@ from GitHub — right click, *Save link as*.
 |------|-----:|------|
 | **The finished workbook, with the example business filled in** | 862 KB | [pet-sitting-business-spreadsheet.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-business-spreadsheet.xlsx) |
 | **The finished workbook, empty and ready to sell** | 834 KB | [pet-sitting-business-spreadsheet-blank.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-business-spreadsheet-blank.xlsx) |
-| **The generator source, zipped** | 244 KB | [pet-sitting-spreadsheet-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip) |
+| **The generator source, zipped** | 248 KB | [pet-sitting-spreadsheet-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip) |
 
 The two `.xlsx` files are the product itself: 27 tabs, every formula
 cell locked, every sheet protected with `premium`, author Novality

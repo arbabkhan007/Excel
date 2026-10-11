@@ -65,6 +65,19 @@ def spec(cfg: Config) -> SheetSpec:
                  "as well and it shows up in the week."),
         Col("eaten_by", "Who is having it", 14, "text",
             validate=list_from("MemberNames")),
+        Col("queue_rank", "Queue rank", 9, "int",
+            formula='=IF(OR({item}{r}="",{status}{r}="Eaten",'
+                    '{status}{r}="Binned",NOT(ISNUMBER('
+                    '{days_left}{r}))),"",COUNTIFS({status_first}:'
+                    '{status_last},"<>Eaten",{status_first}:'
+                    '{status_last},"<>Binned",{days_left_first}:'
+                    '{days_left_last},"<"&{days_left}{r})+'
+                    'COUNTIFS({status_first}:{status}{r},"<>Eaten",'
+                    '{status_first}:{status}{r},"<>Binned",'
+                    '{days_left_first}:{days_left}{r},{days_left}{r}))',
+            hidden=True,
+            note="1 = eat this one next. Drives the Fridge & Freezer "
+                 "queue and the printable week."),
         Col("status", "Status", 13, "status",
             validate=list_from("LeftoverStatusList"), cf=status_cf()),
         Col("outcome", "What happened", 26, "status",

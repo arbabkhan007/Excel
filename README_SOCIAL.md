@@ -1,5 +1,17 @@
 # Social Media Content Calendar & Analytics Planner — generator
 
+> **This repository holds three spreadsheet products** built on the same
+> engine, with the same conventions, the same author (Novality Store) and
+> the same `premium` sheet protection:
+>
+> * **Pet Sitting & Dog Walking Business Spreadsheet** —
+>   [README.md](README.md), `build_pet_sitting_workbook.py`, 27 tabs.
+> * **Social Media Content Calendar & Analytics Planner** — this
+>   README, `build_social_media_workbook.py`, 43 tabs.
+> * **Automated Meal Planner & Grocery List Spreadsheet** —
+>   [README_MEAL.md](README_MEAL.md),
+>   `build_meal_planner_workbook.py`, 36 tabs.
+
 Python code that builds a finished, ready-to-sell Excel workbook for
 anyone who plans social media content: a 12-month calendar, the banks and
 trackers around it, and the dashboards that read it back.
@@ -20,9 +32,11 @@ so the command above runs with **no installation and no dependencies** from
 the repository root. Outside this repo, `pip install xlsxwriter` first — the
 generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
 
-The companion product in this repository is the
-[Pet Sitting & Dog Walking Business Spreadsheet](README.md); both share the
-same engine, the same conventions and the same quality tools.
+The companion products in this repository are the
+[Pet Sitting & Dog Walking Business Spreadsheet](README.md) and the
+[Automated Meal Planner & Grocery List Spreadsheet](README_MEAL.md);
+all three share the same engine, the same conventions and the same
+quality tools.
 
 ---
 
@@ -104,7 +118,7 @@ from GitHub — right click, *Save link as*.
 |------|-----:|------|
 | **The finished workbook, with the example brand filled in** | 1,460 KB | [social-media-content-planner.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner.xlsx) |
 | **The finished workbook, empty and ready to sell** | 1,419 KB | [social-media-content-planner-blank.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-blank.xlsx) |
-| **The generator source, zipped** | 291 KB | [social-media-content-planner-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-source.zip) |
+| **The generator source, zipped** | 295 KB | [social-media-content-planner-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-source.zip) |
 
 The two `.xlsx` files are the product itself: 43 tabs, every formula
 cell locked, every sheet protected with `premium`, author Novality

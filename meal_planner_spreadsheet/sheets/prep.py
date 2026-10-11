@@ -80,6 +80,15 @@ def spec(cfg: Config) -> SheetSpec:
         Col("cost_portion", "Cost a portion", 11, "money",
             formula='=IF(OR({cost}{r}="",{portions}{r}="",'
                     '{portions}{r}=0),"",{cost}{r}/{portions}{r})'),
+        Col("todo_rank", "To-do rank", 9, "int",
+            formula='=IF(OR({job}{r}="",{status}{r}="Done",'
+                    'NOT(ISNUMBER({date}{r}))),"",COUNTIFS('
+                    '{status_first}:{status_last},"<>Done",'
+                    '{date_first}:{date_last},"<"&{date}{r})+'
+                    'COUNTIFS({status_first}:{status}{r},"<>Done",'
+                    '{date_first}:{date}{r},{date}{r}))',
+            hidden=True,
+            note="1 = the next unfinished prep job by date."),
         Col("status", "Status", 12, "status",
             validate=list_from("PrepStatusList"), cf=status_cf()),
         Col("alert", "Check", 24, "status",

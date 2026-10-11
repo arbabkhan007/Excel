@@ -137,6 +137,28 @@ def spec(cfg: Config) -> SheetSpec:
                     '[[Recipe Ingredients.ingredient]],{name}{r}))',
             note="Everything your planned meals call for in the "
                  "shopping window, in base units."),
+        Col("spend_key", "Spend key", 9, "number",
+            formula='=IF({name}{r}="",0,IFERROR({per_100}{r}*1,0)*'
+                    'IFERROR({used_in}{r}*1,0))',
+            hidden=True,
+            note="Cost per 100 times the number of recipes that use "
+                 "it - a rough 'where the money goes' score."),
+        Col("spend_rank", "Spend rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({spend_key_first}:'
+                    '{spend_key_last},">"&{spend_key}{r})+'
+                    'COUNTIFS({spend_key_first}:{spend_key}{r},'
+                    '{spend_key}{r}))',
+            hidden=True, note="1 = the ingredient you spend most on."),
+        Col("waste_count", "Times binned", 9, "int",
+            formula='=IF({name}{r}="",0,COUNTIFS([[Food Waste.item]],'
+                    '{name}{r}))',
+            hidden=True),
+        Col("waste_rank", "Waste rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({waste_count_first}:'
+                    '{waste_count_last},">"&{waste_count}{r})+'
+                    'COUNTIFS({waste_count_first}:{waste_count}{r},'
+                    '{waste_count}{r}))',
+            hidden=True, note="1 = binned most often."),
         Col("need_rank", "Rank", 7, "int",
             formula='=IF({name}{r}="","",IF({need_now}{r}>0,'
                     'COUNTIF({need_now}${first}:{need_now}{r},">0"),""))',

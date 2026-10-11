@@ -64,6 +64,11 @@ def spec(cfg: Config) -> SheetSpec:
         Col("on_list", "On this week's list", 11, "int",
             formula='=IF({name}{r}="","",COUNTIFS('
                     '[[Grocery List.store]],{name}{r}))'),
+        Col("spend_rank", "Spend rank", 9, "int",
+            formula='=IF({name}{r}="","",COUNTIFS({spent_first}:'
+                    '{spent_last},">"&{spent}{r})+COUNTIFS('
+                    '{spent_first}:{spent}{r},{spent}{r}))',
+            hidden=True, note="1 = where most of the money goes."),
         Col("status", "Status", 12, "status",
             validate=list_from("ActiveList"), cf=status_cf()),
         Col("alert", "Check", 22, "status",

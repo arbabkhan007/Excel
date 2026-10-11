@@ -121,6 +121,12 @@ def spec(cfg: Config) -> SheetSpec:
                     '{base_qty}{r}*{plan_factor}{r})',
             note="Quantity x planned batches. This is the number the "
                  "grocery list adds up."),
+        Col("scale_key", "Scale key", 10, "text",
+            formula='=IF({ingredient}{r}="","",{recipe}{r}&"#"&'
+                    'COUNTIFS({recipe_first}:{recipe}{r},{recipe}{r}))',
+            hidden=True,
+            note="Recipe ID plus the line number within that recipe - "
+                 "how the recipe scaler walks the ingredient list."),
         Col("key", "Key", 10, "text",
             formula='=IF({ingredient}{r}="","",{recipe}{r}&"|"&'
                     '{ingredient}{r})', hidden=True),

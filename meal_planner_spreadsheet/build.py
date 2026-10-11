@@ -19,10 +19,14 @@ from .config import Config
 from .formats import FormatBook
 from .layout import Registry, SheetSpec
 from .names import define_cross_sheet_names
-from .sheets import (dashboard, events, goals, grocery, ingredients, leftovers, lists,
-                     meal_plan, members, pantry, prep, recipe_lines,
-                     recipes, settings, spending, staples, store_prices,
-                     start_here, stores, waste, weekly)
+from .sheets import (allergens, budget, converter, dashboard, events,
+                     filters, fridge, goals, grocery, help_tab,
+                     ingredients, leftovers, lists, meal_plan, members,
+                     monthly, nutrition, pantry, prep, printables,
+                     recipe_costs, recipe_lines, recipes, reports,
+                     rotation, settings, spending, staples, start_here,
+                     store_prices, stores, sustainability, waste,
+                     weekly)
 from .writer import SheetWriter
 
 #: register modules, in the order their specs are registered
@@ -34,11 +38,15 @@ REGISTER_MODULES = [
 
 #: tab order of the finished workbook
 SHEET_ORDER: List[str] = [
-    "Start Here", "Dashboard", "Weekly Planner", "Settings", "Lists",
+    "Start Here", "Dashboard", "Weekly Planner", "Monthly Planner", "Settings", "Lists",
     "Household", "Recipes", "Recipe Ingredients", "Ingredients",
     "Meal Plan", "Grocery List", "Pantry", "Staples", "Leftovers",
-    "Food Waste", "Meal Prep", "Grocery Spending", "Store Prices",
-    "Stores", "Events", "Goals",
+    "Food Waste", "Meal Prep", "Dietary Filters", "Nutrition",
+    "Budget", "Recipe Costs", "Converter", "Rotation",
+    "Food Safety", "Fridge & Freezer",
+    "Grocery Spending", "Store Prices",
+    "Stores", "Events", "Goals", "Sustainability", "Reports",
+    "Print Week", "Print Shopping", "Print Recipe", "Help",
 ]
 
 #: sheets that are not registers - name -> builder(book, fmts, cfg, reg)
@@ -46,8 +54,23 @@ PAGE_BUILDERS: Dict[str, Callable] = {
     "Start Here": start_here.build,
     "Dashboard": dashboard.build,
     "Weekly Planner": weekly.build,
+    "Monthly Planner": monthly.build,
+    "Nutrition": nutrition.build,
+    "Budget": budget.build,
+    "Dietary Filters": filters.build,
+    "Recipe Costs": recipe_costs.build,
+    "Converter": converter.build,
+    "Rotation": rotation.build,
+    "Food Safety": allergens.build,
+    "Fridge & Freezer": fridge.build,
     "Settings": settings.build,
     "Lists": lists.build,
+    "Sustainability": sustainability.build,
+    "Reports": reports.build,
+    "Print Week": printables.build_week,
+    "Print Shopping": printables.build_shopping,
+    "Print Recipe": printables.build_recipe,
+    "Help": help_tab.build,
 }
 
 #: register modules by sheet name

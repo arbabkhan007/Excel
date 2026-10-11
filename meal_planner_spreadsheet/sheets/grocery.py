@@ -91,6 +91,12 @@ def spec(cfg: Config) -> SheetSpec:
         Col("to_buy", "To buy", 10, "number1",
             formula='=IF({got}{r}="Yes",0,IF({buy_qty}{r}="",0,'
                     '{buy_qty}{r}))', hidden=True),
+        Col("buy_rank", "Buy rank", 8, "int",
+            formula='=IF(OR({ingredient}{r}="",{short}{r}=0,'
+                    '{short}{r}=""),"",COUNTIFS({short_first}:'
+                    '{short}{r},">0"))',
+            hidden=True,
+            note="Position on the printable shopping list."),
         Col("recipes", "For how many meals", 11, "int",
             formula='=IF({ingredient}{r}="","",COUNTIFS('
                     '[[Recipe Ingredients.ingredient]],{ingredient}{r},'

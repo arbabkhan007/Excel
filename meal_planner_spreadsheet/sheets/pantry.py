@@ -88,6 +88,26 @@ def spec(cfg: Config) -> SheetSpec:
                  "fmt": "warn"}]),
         Col("staple", "Staple?", 9, "flag", validate=list_from("YesNoList"),
             note="Things you never want to run out of."),
+        Col("fridge_rank", "Fridge rank", 9, "int",
+            formula='=IF(OR({ingredient}{r}="",{location}{r}<>'
+                    '"Fridge",NOT(ISNUMBER({days_left}{r}))),"",'
+                    'COUNTIFS({location_first}:{location_last},"Fridge",'
+                    '{days_left_first}:{days_left_last},"<"&'
+                    '{days_left}{r})+COUNTIFS({location_first}:'
+                    '{location}{r},"Fridge",{days_left_first}:'
+                    '{days_left}{r},{days_left}{r}))',
+            hidden=True,
+            note="1 = the fridge item with the least time left."),
+        Col("freezer_rank", "Freezer rank", 9, "int",
+            formula='=IF(OR({ingredient}{r}="",{location}{r}<>'
+                    '"Freezer",NOT(ISNUMBER({days_left}{r}))),"",'
+                    'COUNTIFS({location_first}:{location_last},"Freezer",'
+                    '{days_left_first}:{days_left_last},"<"&'
+                    '{days_left}{r})+COUNTIFS({location_first}:'
+                    '{location}{r},"Freezer",{days_left_first}:'
+                    '{days_left}{r},{days_left}{r}))',
+            hidden=True,
+            note="1 = the freezer item with the least time left."),
         Col("status", "Status", 14, "status",
             formula='=IF({ingredient}{r}="","",'
                     'IF({base_qty}{r}=0,"Out of stock",'

@@ -200,9 +200,9 @@ Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
 Dashboards do not aggregate the registers directly. A hidden sheet
 pre-computes one row per month, per platform/service, per category and
 per owner, each with its own ranking key, and the visible pages read
-those columns with plain `INDEX`/`MATCH`. It keeps the heavy
-`SUMIFS` work in one place, keeps recalculation predictable, and makes
-every dashboard number traceable to a single cell.
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy `SUMIFS`
+work in one place, keeps recalculation predictable, and makes every
+dashboard number traceable to a single cell.
 
 
 ### Every tab at a glance
@@ -313,8 +313,8 @@ every dashboard number traceable to a single cell.
 | [`tools/validate_social_workbook.py`](#toolsvalidate_social_workbookpy) | 297 | Static checks on a generated Social Media Planner workbook |
 | [`tools/check_social_sample.py`](#toolscheck_social_samplepy) | 209 | Cross-check the example records in a generated social media workbook |
 | [`tools/recalc_check.py`](#toolsrecalc_checkpy) | 216 | Really calculate every formula in a generated workbook and report any cell that ends up as an Excel error... |
-| [`tools/export_source_md.py`](#toolsexport_source_mdpy) | 732 | Write every source file of a generator into one markdown document |
-| [`tools/make_download_zip.py`](#toolsmake_download_zippy) | 182 | Pack a generator into a single zip people can download and run |
+| [`tools/export_source_md.py`](#toolsexport_source_mdpy) | 922 | Write every source file of a generator into one markdown document |
+| [`tools/make_download_zip.py`](#toolsmake_download_zippy) | 232 | Pack a generator into a single zip people can download and run |
 
 ---
 
@@ -11142,7 +11142,7 @@ if __name__ == "__main__":
 
 ### `tools/export_source_md.py`
 
-*732 lines · 10 functions*
+*922 lines · 10 functions*
 
 > Write every source file of a generator into one markdown document.
 >
@@ -11168,7 +11168,7 @@ if __name__ == "__main__":
 | `file_table(sections)` |  |
 | `main(argv)` |  |
 
-**Module constants:** `ROOT` (os.path.dirname(...)), `SHARED_TOOLS` (2 items), `PET_SECTIONS` (5 items), `PET` (9 entries), `SOCIAL_SECTIONS` (7 items), `SOCIAL` (9 entries), `PRODUCTS` (2 entries), `ARCHITECTURE` ('Everything here is plain Python writing a `.xlsx` file t...).
+**Module constants:** `ROOT` (os.path.dirname(...)), `SHARED_TOOLS` (2 items), `PET_SECTIONS` (5 items), `PET` (9 entries), `SOCIAL_SECTIONS` (7 items), `SOCIAL` (9 entries), `MEAL_SECTIONS` (6 items), `MEAL` (11 entries), `PRODUCTS` (3 entries), `ARCHITECTURE` ('Everything here is plain Python writing a `.xlsx` file t...), `DEFAULT_CLOSING` ('**Hide the `Calc` engine**, activate the first tab and c...), `CALC_ENGINE` ('### The hidden `Calc` tab\n\nDashboards do not aggregate...), `RANK_ENGINE` ('### Ranking columns instead of a hidden engine\n\nThere ...).
 
 ````python
 """Write every source file of a generator into one markdown document.
@@ -11447,7 +11447,153 @@ SOCIAL = {
     "sections": SOCIAL_SECTIONS,
 }
 
-PRODUCTS = {"pet": PET, "social": SOCIAL}
+# ---------------------------------------------------------------------------
+# Product C - automated meal planner
+# ---------------------------------------------------------------------------
+
+_MEAL = "meal_planner_spreadsheet"
+
+MEAL_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_meal_planner_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Meal Planner & Grocery List.xlsx`.",
+     ["build_meal_planner_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the sheet "
+     "writer, the cross sheet names and the demo household. These are the "
+     "parts every tab leans on.",
+     [f"{_MEAL}/__init__.py",
+      f"{_MEAL}/__main__.py",
+      f"{_MEAL}/cli.py",
+      f"{_MEAL}/config.py",
+      f"{_MEAL}/layout.py",
+      f"{_MEAL}/formats.py",
+      f"{_MEAL}/writer.py",
+      f"{_MEAL}/names.py",
+      f"{_MEAL}/build.py",
+      f"{_MEAL}/sample_data.py"]),
+    ("3. The food registers",
+     "One module per data tab. Each returns a `SheetSpec` - a list of "
+     "columns with their formulas - and the writer turns that into a "
+     "formatted, validated, protected sheet. These five are the chain "
+     "that makes the shopping list write itself.",
+     [f"{_MEAL}/sheets/__init__.py",
+      f"{_MEAL}/sheets/common.py",
+      f"{_MEAL}/sheets/lists.py",
+      f"{_MEAL}/sheets/settings.py",
+      f"{_MEAL}/sheets/members.py",
+      f"{_MEAL}/sheets/recipes.py",
+      f"{_MEAL}/sheets/recipe_lines.py",
+      f"{_MEAL}/sheets/ingredients.py",
+      f"{_MEAL}/sheets/meal_plan.py",
+      f"{_MEAL}/sheets/grocery.py"]),
+    ("4. The kitchen registers",
+     "What is in the house and what happens to it: the pantry, the "
+     "staples, leftovers, waste, batch cooking, the shops and what you "
+     "spend in them, events and goals.",
+     [f"{_MEAL}/sheets/pantry.py",
+      f"{_MEAL}/sheets/staples.py",
+      f"{_MEAL}/sheets/leftovers.py",
+      f"{_MEAL}/sheets/waste.py",
+      f"{_MEAL}/sheets/prep.py",
+      f"{_MEAL}/sheets/spending.py",
+      f"{_MEAL}/sheets/store_prices.py",
+      f"{_MEAL}/sheets/stores.py",
+      f"{_MEAL}/sheets/events.py",
+      f"{_MEAL}/sheets/goals.py"]),
+    ("5. The pages",
+     "The tabs that read the registers: the welcome page, the dashboard, "
+     "the two planners, the filters, the money and nutrition pages, the "
+     "converter and scaler, rotation, food safety, cold storage, "
+     "sustainability, the reports, the three printables and the help "
+     "tab.",
+     [f"{_MEAL}/sheets/start_here.py",
+      f"{_MEAL}/sheets/dashboard.py",
+      f"{_MEAL}/sheets/weekly.py",
+      f"{_MEAL}/sheets/monthly.py",
+      f"{_MEAL}/sheets/filters.py",
+      f"{_MEAL}/sheets/nutrition.py",
+      f"{_MEAL}/sheets/budget.py",
+      f"{_MEAL}/sheets/recipe_costs.py",
+      f"{_MEAL}/sheets/converter.py",
+      f"{_MEAL}/sheets/rotation.py",
+      f"{_MEAL}/sheets/allergens.py",
+      f"{_MEAL}/sheets/fridge.py",
+      f"{_MEAL}/sheets/sustainability.py",
+      f"{_MEAL}/sheets/reports.py",
+      f"{_MEAL}/sheets/printables.py",
+      f"{_MEAL}/sheets/help_tab.py"]),
+    ("6. Quality checks (optional)",
+     "Not needed to build the workbook - these are the checks that keep "
+     "it honest. The first two need `openpyxl`, the third needs "
+     "`formulas`.",
+     ["tools/validate_meal_workbook.py",
+      "tools/check_meal_sample.py",
+      "tools/recalc_check.py"] + SHARED_TOOLS),
+]
+
+MEAL = {
+    "package": "meal_planner_spreadsheet",
+    "builder": "build_meal_planner_workbook.py",
+    "doc": "README_MEAL.md",
+    "tabs": 36,
+    "title": "Automated Meal Planner & Grocery List Spreadsheet",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_MEAL.md",
+    "closing": ("**Activate the first tab** and close the file - there "
+                "is no hidden sheet to hide in this one."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 36 tab `.xlsx` workbook with over 72,000 formulas: a "
+        "weekly and a monthly meal planner, a recipe book with costed "
+        "ingredient lines, a grocery list that builds itself from the "
+        "plan and deducts the pantry, fridge and freezer tracking, "
+        "leftovers and waste, a food budget, recipe costing and store "
+        "price comparison, unit conversion and recipe scaling, dietary "
+        "filters, calories and macros, batch cooking, meal rotation, "
+        "food safety, a dashboard, reports and three printable pages. "
+        "Document author is **Novality Store**; every formula cell is "
+        "locked and every sheet protected with the password "
+        "**`premium`**, while the cells you are meant to type in stay "
+        "open.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and on "
+        "the much older 0.3.0, so it does not rely on anything recent. "
+        "The workbook itself is Excel 2010 safe \u2014 no dynamic arrays, "
+        "no `XLOOKUP`, no `IFS`, nothing that needs array entry \u2014 and "
+        "it opens in Google Sheets, LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_meal_planner_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --household TEXT      household name on the cover and printables",
+        "  --cook TEXT           the main cook / planner",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --year YYYY           the year the planner is built for",
+        "  --week-start DAY      Monday or Sunday",
+        "  --servings N          default number of people a meal feeds",
+        "  --budget AMOUNT       weekly food budget",
+        "  --units {Metric,Imperial}   which unit set the drop downs lead with",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the demo data)",
+        "```",
+    ],
+    "sections": MEAL_SECTIONS,
+}
+
+PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL}
 
 
 # ---------------------------------------------------------------------------
@@ -11499,7 +11645,7 @@ Two kinds of tab exist.
 5. **Define the live lookup names** (`ContentIDs`, `TeamNames`, …) from
    the registry. Each is an `OFFSET` range that grows and shrinks with
    the number of filled rows, so a drop down never shows blanks.
-6. **Hide the `Calc` engine**, activate the first tab and close the file.
+6. {closing}
 
 ### Describing a column
 
@@ -11550,15 +11696,55 @@ Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
   not, and every sheet is protected with the same password — so the
   maths cannot be typed over by accident but the cream cells stay open.
 
+{engine}
+"""
+
+DEFAULT_CLOSING = ("**Hide the `Calc` engine**, activate the first tab "
+                   "and close the file.")
+
+CALC_ENGINE = """\
 ### The hidden `Calc` tab
 
 Dashboards do not aggregate the registers directly. A hidden sheet
 pre-computes one row per month, per platform/service, per category and
 per owner, each with its own ranking key, and the visible pages read
-those columns with plain `INDEX`/`MATCH`. It keeps the heavy
-`SUMIFS` work in one place, keeps recalculation predictable, and makes
-every dashboard number traceable to a single cell.
-"""
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy `SUMIFS`
+work in one place, keeps recalculation predictable, and makes every
+dashboard number traceable to a single cell."""
+
+RANK_ENGINE = """\
+### Ranking columns instead of a hidden engine
+
+There is no hidden `Calc` tab in this product. Anything a page needs to
+rank - the next thing to buy, the recipe you have left alone longest,
+the leftovers to eat first, the fridge item closest to its date - is a
+**hidden rank column on the register itself**:
+
+```python
+Col("rotation_rank", "Rotation rank", 9, "int",
+    formula='=IF({{name}}{{r}}="","",COUNTIFS({{sort_key_first}}:'
+            '{{sort_key_last}},">"&{{sort_key}}{{r}})+'
+            'COUNTIFS({{sort_key_first}}:{{sort_key}}{{r}},'
+            '{{sort_key}}{{r}}))',
+    hidden=True)
+```
+
+`COUNTIFS(whole column, ">" & this row) + COUNTIFS(up to this row, this
+row)` is a dense rank that breaks ties by row order, so the ranks come
+out 1, 2, 3 ... with no gaps and no duplicates. The page then asks for
+the nth item with an ordinary `MATCH(n, rank_range, 0)` - a plain range
+lookup, which is why there is **no array formula and nothing needing
+Ctrl+Shift+Enter anywhere in the workbook**. The tempting alternative,
+`LARGE(IF(...))` over a computed array, reads better in Python and
+quietly returns the wrong answer in Excel 2010.
+
+The ranks in use: `Ingredients.need_rank` (what to buy next),
+`Grocery List.buy_rank` (position on the printed list),
+`Ingredients.spend_rank` and `waste_rank`, `Recipes.cost_rank`,
+`match_rank`, `rotation_rank`, `times_planned_rank`, `calories_rank`,
+`protein_rank` and `fibre_rank`, `Pantry.fridge_rank` and
+`freezer_rank`, `Leftovers.queue_rank`, `Meal Prep.todo_rank` and
+`Stores.spend_rank`."""
 
 
 def outline(path: str) -> list:
@@ -11792,7 +11978,8 @@ def main(argv=None) -> int:
                   "  * [Describing a column](#describing-a-column)",
                   "  * [The rules every formula obeys]"
                   "(#the-rules-every-formula-obeys)",
-                  "  * [The hidden `Calc` tab](#the-hidden-calc-tab)",
+                  f"  * [{product.get('engine_heading', 'The hidden `Calc` tab')}]"
+                  f"(#{anchor(product.get('engine_heading', 'The hidden Calc tab'))})",
                   "  * [Every tab at a glance](#every-tab-at-a-glance)",
                   "  * [Every file at a glance](#every-file-at-a-glance)"]
     for heading, _intro, paths in sections:
@@ -11806,8 +11993,11 @@ def main(argv=None) -> int:
 
     if detailed:
         lines += ["## 0. How it is put together", ""]
-        lines += [ARCHITECTURE.format(builder=product["builder"],
-                                      package=product["package"]), ""]
+        lines += [ARCHITECTURE.format(
+            builder=product["builder"], package=product["package"],
+            engine=(RANK_ENGINE if product.get("engine_heading")
+                    else CALC_ENGINE),
+            closing=product.get("closing", DEFAULT_CLOSING)), ""]
         tabs = tab_table(product)
         if tabs:
             lines += ["### Every tab at a glance", "",
@@ -11907,12 +12097,13 @@ if __name__ == "__main__":
 
 ### `tools/make_download_zip.py`
 
-*182 lines · 2 functions*
+*232 lines · 2 functions*
 
 > Pack a generator into a single zip people can download and run.
 >
 >     python tools/make_download_zip.py
 >     python tools/make_download_zip.py --product social
+>     python tools/make_download_zip.py --product meal
 >
 > Writes `download/<product>-source.zip` containing the generator, the
 > quality tools, the documentation and a `requirements.txt`, all under one
@@ -11928,13 +12119,14 @@ if __name__ == "__main__":
 | `gather(product)` | `[(archive name, text)]` for everything that goes in the zip |
 | `main(argv)` |  |
 
-**Module constants:** `ROOT` (os.path.dirname(...)), `STAMP` (6 items), `SHARED_TOOLS` (3 items), `REQUIREMENTS` ('# The generator needs one package.\nXlsxWriter>=3.0\n\n#...), `PET_HOW_TO_RUN` ('Pet Sitting & Dog Walking Business Spreadsheet\n========...), `SOCIAL_HOW_TO_RUN` ('Social Media Content Calendar & Analytics Planner\n=====...), `PRODUCTS` (2 entries).
+**Module constants:** `ROOT` (os.path.dirname(...)), `STAMP` (6 items), `SHARED_TOOLS` (3 items), `REQUIREMENTS` ('# The generator needs one package.\nXlsxWriter>=3.0\n\n#...), `PET_HOW_TO_RUN` ('Pet Sitting & Dog Walking Business Spreadsheet\n========...), `SOCIAL_HOW_TO_RUN` ('Social Media Content Calendar & Analytics Planner\n=====...), `MEAL_HOW_TO_RUN` ('Automated Meal Planner & Grocery List Spreadsheet\n=====...), `PRODUCTS` (3 entries).
 
 ````python
 """Pack a generator into a single zip people can download and run.
 
     python tools/make_download_zip.py
     python tools/make_download_zip.py --product social
+    python tools/make_download_zip.py --product meal
 
 Writes `download/<product>-source.zip` containing the generator, the
 quality tools, the documentation and a `requirements.txt`, all under one
@@ -12030,6 +12222,44 @@ explains how it is built and what is on each of the 43 tabs;
 SOURCE_CODE_SOCIAL.md is the whole program in one readable document.
 """
 
+MEAL_HOW_TO_RUN = """\
+Automated Meal Planner & Grocery List Spreadsheet
+==================================================
+
+    pip install XlsxWriter
+    python build_meal_planner_workbook.py
+
+The workbook appears in:
+
+    output/Meal Planner & Grocery List.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example data
+    --household "Our House" your household name on the cover and prints
+    --cook "Your Name"      the main cook / planner
+    --servings 6            how many people a meal is normally cooked for
+    --budget 200            the weekly food budget
+    --units Imperial        lead with cups, ounces and pounds
+    --year 2027             the year the planner is built for
+    --week-start Sunday     weeks run Sunday to Saturday
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 200              more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium` so the maths cannot be typed over by accident; the
+cream coloured cells are the ones meant for typing in.
+
+Fill in Settings and Household first, then Ingredients and Recipes, then
+plan some meals - the Grocery List builds itself from the plan and takes
+off whatever the Pantry says you already have.  README_MEAL.md explains
+how it is built and what is on each of the 36 tabs; SOURCE_CODE_MEAL.md
+is the whole program in one readable document.
+"""
+
+
 PRODUCTS = {
     "pet": {
         "folder": "pet-sitting-spreadsheet",
@@ -12052,6 +12282,17 @@ PRODUCTS = {
         "tools": ["tools/validate_social_workbook.py",
                   "tools/check_social_sample.py"] + SHARED_TOOLS,
         "how_to_run": SOCIAL_HOW_TO_RUN,
+    },
+    "meal": {
+        "folder": "meal-planner-grocery-list",
+        "output": os.path.join(
+            "download", "meal-planner-grocery-list-source.zip"),
+        "files": ["build_meal_planner_workbook.py", "README_MEAL.md",
+                  "SOURCE_CODE_MEAL.md"],
+        "trees": ["meal_planner_spreadsheet"],
+        "tools": ["tools/validate_meal_workbook.py",
+                  "tools/check_meal_sample.py"] + SHARED_TOOLS,
+        "how_to_run": MEAL_HOW_TO_RUN,
     },
 }
 
@@ -13292,4 +13533,4 @@ Helper tables for the dashboards and reports. This tab is hidden by default - un
 
 ---
 
-*10,641 lines of Python in 56 files.*
+*10,881 lines of Python in 56 files.*

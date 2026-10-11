@@ -441,6 +441,22 @@ def _build(cfg: Config) -> Sample:
          "slot": "Wednesday 7-8pm", "loyalty": "Free delivery pass",
          "open_hours": "Any time", "price_level": "Mid-range",
          "rating": 4, "status": "Active", "notes": ""},
+        {"name": "Curry House", "type": "Takeaway",
+         "location": "High Street", "travel_min": 10,
+         "best_for": "Friday night when nobody wants to cook",
+         "delivery": "Yes", "delivery_fee": 2.50, "min_order": 20,
+         "slot": "", "loyalty": "", "open_hours": "5pm - 11pm",
+         "price_level": "Premium", "rating": 4, "status": "Active",
+         "notes": "Logged here so the takeaway spend lands in the "
+                  "same budget as the shopping."},
+        {"name": "The Lantern", "type": "Restaurant",
+         "location": "Market Square", "travel_min": 15,
+         "best_for": "Birthdays and anniversaries", "delivery": "No",
+         "delivery_fee": None, "min_order": None, "slot": "",
+         "loyalty": "", "open_hours": "12pm - 10pm",
+         "price_level": "Premium", "rating": 5, "status": "Active",
+         "notes": "Eating out counts as food spend - that is rather "
+                  "the point of tracking it."},
     ]
 
     # ------------------------------------------------------- ingredients --
