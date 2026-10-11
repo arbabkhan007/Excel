@@ -141,6 +141,7 @@ pet_sitting_spreadsheet/
 tools/
     validate_workbook.py    static QA on a generated file
     check_sample_data.py    makes sure the demo records join up
+    recalc_check.py         calculates every formula and checks the answer
 build_pet_sitting_workbook.py
 ```
 
@@ -194,6 +195,9 @@ Col("balance", "Balance due", 12, "money",
 python build_pet_sitting_workbook.py -o output/test.xlsx
 python tools/validate_workbook.py   output/test.xlsx      # needs openpyxl
 python tools/check_sample_data.py   output/test.xlsx
+
+python build_pet_sitting_workbook.py --rows 120 -o /tmp/small.xlsx
+python tools/recalc_check.py /tmp/small.xlsx              # needs formulas
 ```
 
 `validate_workbook.py` reports: tab order and the hidden Calc sheet,
@@ -206,9 +210,25 @@ that are not locked.
 
 `check_sample_data.py` re-reads the finished file and confirms every
 example booking, visit, invoice, payment, pet and task points at a record
-that exists — and that payments sit on their own client's invoice.
+that exists — that payments sit on their own client's invoice, that a
+visit matches the client and pet on its booking, and that an invoice
+raised from a booking is addressed to that booking's client.
 
-Current status: both clean, `pyflakes` clean.
+`recalc_check.py` goes further and actually *runs* the workbook: it loads
+it into the `formulas` calculation engine, evaluates the whole dependency
+graph, then reads the answer out of every formula cell — so a formula that
+parses perfectly but divides by zero on an empty row is still caught.
+Check a `--rows 120` build rather than a full-size one: the formulas are
+identical, there are just fewer rows of them, and 50,000 of them need
+several GB of memory (the tool says so and stops unless you pass
+`--force`). The engine cannot resolve `OFFSET()` defined names, so a
+throwaway copy with those flattened is made first; your file is not
+touched.
+
+Current status: all three clean and `pyflakes` clean. Every formula in the
+workbook has been calculated and lands on a real answer — checked on the
+sample build, on `--blank`, and with prices-include-tax and
+not-tax-registered settings, so the money adds up in each tax mode.
 
 ---
 

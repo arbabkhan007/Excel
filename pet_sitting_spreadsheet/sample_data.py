@@ -525,51 +525,34 @@ def _build(cfg: Config) -> Sample:
 
     # ------------------------------------------------------------- invoices
     inv_plan = [
-        ("Sarah Mitchell", -26, "BK-0001", "Dog walking - 4 visits", 4, 25,
-         "Paid"),
-        ("Priya Raman", -25, "BK-0002", "Dog walking - weekly package", 4, 25,
-         "Paid"),
-        ("Megan Foster", -24, "BK-0003", "Cat feeding visits", 6, 22, "Paid"),
-        ("Daniel Brooks", -22, "BK-0004", "Dog walking - 60 min x 3", 3, 40,
-         "Paid"),
-        ("James Okafor", -20, "BK-0005", "Drop-in visits x 5", 5, 26, "Paid"),
-        ("Luis Hernandez", -18, "BK-0007", "Dog walking - 30 min x 4", 4, 25,
-         "Paid"),
-        ("Chloe Bennett", -15, "BK-0008", "Puppy visits x 3", 3, 28,
-         "Partially paid"),
-        ("Megan Foster", -12, "BK-0009", "Cat feeding - fortnight cover", 10,
-         22, "Paid"),
-        ("Daniel Brooks", -10, "BK-0010", "Half day pet sitting", 4, 18,
-         "Paid"),
-        ("James Okafor", -9, "BK-0012", "Overnight pet sitting x 2 nights", 2,
-         95, "Sent"),
-        ("Sarah Mitchell", -6, "BK-0013", "Dog walking - 60 min x 2", 2, 40,
+        ("Sarah Mitchell", -26, "Dog walking - 4 visits", 4, 25, "Paid"),
+        ("Priya Raman", -25, "Dog walking - weekly package", 4, 25, "Paid"),
+        ("Megan Foster", -24, "Cat feeding visits", 6, 22, "Paid"),
+        ("Daniel Brooks", -22, "Dog walking - 60 min x 3", 3, 40, "Paid"),
+        ("James Okafor", -20, "Drop-in visits x 5", 5, 26, "Paid"),
+        ("Luis Hernandez", -18, "Dog walking - 30 min x 4", 4, 25, "Paid"),
+        ("Chloe Bennett", -15, "Puppy visits x 3", 3, 28, "Partially paid"),
+        ("Megan Foster", -12, "Cat feeding - fortnight cover", 10, 22, "Paid"),
+        ("Daniel Brooks", -10, "Half day pet sitting", 4, 18, "Paid"),
+        ("James Okafor", -9, "Overnight pet sitting x 2 nights", 2, 95,
          "Sent"),
-        ("Megan Foster", -4, "BK-0014", "Medication visits x 3", 3, 18,
-         "Sent"),
-        ("Priya Raman", -2, "BK-0018", "Dog walking - 30 min x 2", 2, 25,
-         "Draft"),
-        ("Chloe Bennett", -1, "BK-0015", "Drop-in visit - rabbit care", 1, 26,
-         "Draft"),
-        ("Luis Hernandez", -21, "", "Dog walking - 30 min x 6", 6, 25,
-         "Paid"),
-        ("Daniel Brooks", -16, "", "Senior pet care visits x 4", 4, 32,
-         "Paid"),
-        ("Sarah Mitchell", -13, "", "Dog walking - 60 min x 4", 4, 40,
-         "Paid"),
-        ("Chloe Bennett", -10, "", "Puppy visits x 5", 5, 28, "Paid"),
-        ("James Okafor", -7, "", "Drop-in visits x 4", 4, 26, "Paid"),
-        ("Megan Foster", -5, "", "Cat feeding - week cover", 7, 22, "Sent"),
+        ("Sarah Mitchell", -6, "Dog walking - 60 min x 2", 2, 40, "Sent"),
+        ("Megan Foster", -4, "Medication visits x 3", 3, 18, "Sent"),
+        ("Priya Raman", -2, "Dog walking - 30 min x 2", 2, 25, "Draft"),
+        ("Chloe Bennett", -1, "Drop-in visit - rabbit care", 1, 26, "Draft"),
+        ("Luis Hernandez", -21, "Dog walking - 30 min x 6", 6, 25, "Paid"),
+        ("Daniel Brooks", -16, "Senior pet care visits x 4", 4, 32, "Paid"),
+        ("Sarah Mitchell", -13, "Dog walking - 60 min x 4", 4, 40, "Paid"),
+        ("Chloe Bennett", -10, "Puppy visits x 5", 5, 28, "Paid"),
+        ("James Okafor", -7, "Drop-in visits x 4", 4, 26, "Paid"),
+        ("Megan Foster", -5, "Cat feeding - week cover", 7, 22, "Sent"),
     ]
     # A few invoices are raised straight from a booking instead of being
-    # typed by hand - that is what the Booking ref column is for.
-    linked_plan = [
-        ("Sarah Mitchell", -3, "BK-0019", "Dog walk - 30 min", "Sent"),
-        ("Megan Foster", -2, "BK-0021", "Cat feeding visit", "Sent"),
-        ("Daniel Brooks", -1, "BK-0022", "Senior pet care visit", "Draft"),
-    ]
-    for i, (client, offset, booking, desc, qty, rate, status) in enumerate(
-            inv_plan):
+    # typed by hand - that is what the Booking ref column is for.  The
+    # client and the wording come from the booking itself, so the two
+    # records can never drift apart.  (booking number, days ago, status)
+    linked_plan = [(19, -3, "Sent"), (21, -2, "Sent"), (22, -1, "Draft")]
+    for i, (client, offset, desc, qty, rate, status) in enumerate(inv_plan):
         s.invoices.append(dict(
             date=d(today, offset), client=client, booking="",
             description=desc, qty=qty, rate=rate, status=status,
@@ -578,20 +561,25 @@ def _build(cfg: Config) -> Sample:
             sent_date=d(today, offset) if status != "Draft" else None,
             reminder_sent="Yes" if status == "Sent" and offset < -7 else "No",
             notes="Thank you for your business" if status == "Paid" else ""))
-    for client, offset, booking, desc, status in linked_plan:
+    for number, offset, status in linked_plan:
+        booked = s.bookings[number - 1]
+        ref = f"BK-{number:04d}"
+        pet_name = booked["pet"].split(" (")[0]
         # No Qty / Rate: the amount comes from the linked booking.
         s.invoices.append(dict(
-            date=d(today, offset), client=client, booking=booking,
-            description=desc, status=status, fees=0, discount=0, deposit=0,
+            date=d(today, offset), client=booked["client"], booking=ref,
+            description=f'{booked["service"]} for {pet_name}', status=status,
+            fees=0, discount=0, deposit=0,
             sent_date=d(today, offset) if status != "Draft" else None,
             reminder_sent="No",
-            notes="Raised from booking " + booking))
+            notes=f"Raised from booking {ref} - the amount comes straight "
+                  f"from the booking"))
 
     # ------------------------------------------------------------- payments
     # Payments settle the invoice *including* tax, so the invoice shows as
     # Paid rather than part paid.  `share` < 1 leaves a balance on purpose.
     def _gross(index: int) -> float:
-        qty, rate = inv_plan[index][4], inv_plan[index][5]
+        qty, rate = inv_plan[index][3], inv_plan[index][4]
         gross = qty * rate
         if (cfg.tax_registered == "Yes"
                 and cfg.prices_include_tax != "Yes"):

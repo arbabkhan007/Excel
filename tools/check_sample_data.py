@@ -40,6 +40,29 @@ def column_values(ws, header: str, header_row: int = HEADER_ROW) -> list:
     return out
 
 
+def column_rows(ws, header: str, header_row: int = HEADER_ROW) -> dict:
+    """`{row number: value}` for every non-empty literal under a header.
+
+    Same as `column_values` but it keeps the row, which matters for
+    columns that are mostly blank.
+    """
+    headers = {}
+    for cell in ws[header_row]:
+        if isinstance(cell.value, str):
+            headers[cell.value.strip()] = cell.column
+    if header not in headers:
+        raise KeyError(f"{ws.title}: no column called {header!r}")
+    col = headers[header]
+    out = {}
+    for row in range(header_row + 1, ws.max_row + 1):
+        value = ws.cell(row=row, column=col).value
+        if value is None or (isinstance(value, str)
+                             and (not value or value.startswith("="))):
+            continue
+        out[row] = value
+    return out
+
+
 def main(path: str) -> int:
     wb = openpyxl.load_workbook(path)
     problems = []
@@ -122,6 +145,17 @@ def main(path: str) -> int:
         if bk_pet.get(booking) != pet:
             problems.append(f"Visit Log: {booking} is for "
                             f"{bk_pet.get(booking)!r}, visit says {pet!r}")
+
+    # an invoice raised from a booking must be addressed to that booking's
+    # client, otherwise the invoice total is pulled from somebody else's job
+    inv_booking = column_rows(wb["Invoices"], "Booking ref")
+    inv_clients = column_rows(wb["Invoices"], "Client")
+    for row, booking in inv_booking.items():
+        client = inv_clients.get(row)
+        if bk_client.get(booking) != client:
+            problems.append(f"Invoices: INV-{1001 + row - 5} is addressed "
+                            f"to {client!r} but {booking} belongs to "
+                            f"{bk_client.get(booking)!r}")
 
     if problems:
         print(f"! {len(problems)} problem(s)")
