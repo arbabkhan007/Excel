@@ -19,10 +19,10 @@ from .config import Config
 from .formats import FormatBook
 from .layout import Registry, SheetSpec
 from .names import define_cross_sheet_names
-from .sheets import (events, goals, grocery, ingredients, leftovers, lists,
+from .sheets import (dashboard, events, goals, grocery, ingredients, leftovers, lists,
                      meal_plan, members, pantry, prep, recipe_lines,
                      recipes, settings, spending, staples, store_prices,
-                     stores, waste, weekly)
+                     start_here, stores, waste, weekly)
 from .writer import SheetWriter
 
 #: register modules, in the order their specs are registered
@@ -34,7 +34,7 @@ REGISTER_MODULES = [
 
 #: tab order of the finished workbook
 SHEET_ORDER: List[str] = [
-    "Weekly Planner", "Settings", "Lists",
+    "Start Here", "Dashboard", "Weekly Planner", "Settings", "Lists",
     "Household", "Recipes", "Recipe Ingredients", "Ingredients",
     "Meal Plan", "Grocery List", "Pantry", "Staples", "Leftovers",
     "Food Waste", "Meal Prep", "Grocery Spending", "Store Prices",
@@ -43,6 +43,8 @@ SHEET_ORDER: List[str] = [
 
 #: sheets that are not registers - name -> builder(book, fmts, cfg, reg)
 PAGE_BUILDERS: Dict[str, Callable] = {
+    "Start Here": start_here.build,
+    "Dashboard": dashboard.build,
     "Weekly Planner": weekly.build,
     "Settings": settings.build,
     "Lists": lists.build,
