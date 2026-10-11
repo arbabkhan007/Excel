@@ -89,14 +89,23 @@ generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
 
 ---
 
-## 1b. Download it as one file
+## 1b. Download it
 
-Everything needed to build the workbook is packed into
+Everything is committed to the repository, so these links work straight
+from GitHub — right click, *Save link as*.
 
-    download/pet-sitting-spreadsheet-source.zip   (244 KB)
+| What | Size | Link |
+|------|-----:|------|
+| **The finished workbook, with the example business filled in** | 862 KB | [pet-sitting-business-spreadsheet.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-business-spreadsheet.xlsx) |
+| **The finished workbook, empty and ready to sell** | 834 KB | [pet-sitting-business-spreadsheet-blank.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-business-spreadsheet-blank.xlsx) |
+| **The generator source, zipped** | 244 KB | [pet-sitting-spreadsheet-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip) |
 
-[Download the zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip)
-— unzip it anywhere and run:
+The two `.xlsx` files are the product itself: 27 tabs, every formula
+cell locked, every sheet protected with `premium`, author Novality
+Store.
+
+The zip is for anyone who wants to rebuild or change it — unzip anywhere
+and run:
 
 ```bash
 pip install -r requirements.txt
@@ -106,8 +115,14 @@ python build_pet_sitting_workbook.py
 It holds the generator, the quality tools, this README, `SOURCE_CODE.md`,
 a `requirements.txt` and a plain `HOW TO RUN.txt`. The vendored copy of
 XlsxWriter in this repository is left out on purpose — the zip runs
-against a normal `pip install XlsxWriter` (tested on 3.2.0). Rebuild it
-after a code change with `python tools/make_download_zip.py`.
+against a normal `pip install XlsxWriter` (tested on 3.2.0). Rebuild
+everything after a code change with:
+
+```bash
+python build_pet_sitting_workbook.py -o download/pet-sitting-business-spreadsheet.xlsx
+python build_pet_sitting_workbook.py --blank -o download/pet-sitting-business-spreadsheet-blank.xlsx
+python tools/make_download_zip.py
+```
 
 ---
 

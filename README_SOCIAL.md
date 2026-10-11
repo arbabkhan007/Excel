@@ -95,14 +95,24 @@ same engine, the same conventions and the same quality tools.
 
 ---
 
-## 1b. Download it as one file
+## 1b. Download it
 
-Everything needed to build the workbook is packed into
+Everything is committed to the repository, so these links work straight
+from GitHub — right click, *Save link as*.
 
-    download/social-media-content-planner-source.zip   (291 KB)
+| What | Size | Link |
+|------|-----:|------|
+| **The finished workbook, with the example brand filled in** | 1,460 KB | [social-media-content-planner.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner.xlsx) |
+| **The finished workbook, empty and ready to sell** | 1,419 KB | [social-media-content-planner-blank.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-blank.xlsx) |
+| **The generator source, zipped** | 291 KB | [social-media-content-planner-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-source.zip) |
 
-[Download the zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-source.zip)
-— unzip it anywhere and run:
+The two `.xlsx` files are the product itself: 43 tabs, every formula
+cell locked, every sheet protected with `premium`, author Novality
+Store. Open the blank one, set the plan year on **Settings**, and start
+on the **Start Here** tab.
+
+The zip is for anyone who wants to rebuild or change it — unzip anywhere
+and run:
 
 ```bash
 pip install -r requirements.txt
@@ -113,8 +123,14 @@ It holds the generator, the quality tools, this README,
 `SOURCE_CODE_SOCIAL.md`, a `requirements.txt` and a plain
 `HOW TO RUN.txt`. The vendored copy of XlsxWriter in this repository is
 left out on purpose — the zip runs against a normal
-`pip install XlsxWriter` (tested on 3.2.0). Rebuild it after a code change
-with `python tools/make_download_zip.py --product social`.
+`pip install XlsxWriter` (tested on 3.2.0). Rebuild everything after a
+code change with:
+
+```bash
+python build_social_media_workbook.py -o download/social-media-content-planner.xlsx
+python build_social_media_workbook.py --blank -o download/social-media-content-planner-blank.xlsx
+python tools/make_download_zip.py --product social
+```
 
 ---
 

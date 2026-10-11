@@ -22,7 +22,9 @@ objects.inv
 __pycache__
 
 
-# Generated pet sitting workbooks
+# Generated workbooks
 output/
 *.xlsx
 !xlsxwriter/test/comparison/xlsx_files/*.xlsx
+# ... except the finished products published for download
+!download/*.xlsx
