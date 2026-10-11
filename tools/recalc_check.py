@@ -112,6 +112,9 @@ def main(argv=None) -> int:
                         help="how many example cells to print per error type")
     parser.add_argument("--keep", action="store_true",
                         help="keep the flattened working copy")
+    parser.add_argument("--show", default="", metavar="CELLS",
+                        help="also print the calculated value of these "
+                             "cells, e.g. \"Dashboard!A10,Reports!B12\"")
     parser.add_argument("--force", action="store_true",
                         help="check a big workbook even though the engine "
                              "will need several GB of memory")
@@ -178,6 +181,26 @@ def main(argv=None) -> int:
         counts[token] += 1
         if len(examples[token]) < args.list:
             examples[token].append(coord)
+
+    if args.show:
+        wanted_show = {}
+        for item in args.show.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            sheet, _, coord = item.rpartition("!")
+            wanted_show[(sheet.strip("'").upper(),
+                         coord.replace("$", "").upper())] = item
+        print("  . values asked for:")
+        for key, value in solution.items():
+            if "!" not in key or "]" not in key:
+                continue
+            sheet, _, coord = key.partition("!")
+            sheet = sheet.split("]")[-1].rstrip("'").upper()
+            coord = coord.replace("$", "")
+            label = wanted_show.get((sheet, coord))
+            if label:
+                print(f"    {label:28s} = {cell_text(value)[:70]}")
 
     print(f"  . {seen:,} of them evaluated by the engine", flush=True)
     if not counts:

@@ -1,5 +1,15 @@
 # Pet Sitting & Dog Walking Business Spreadsheet — generator
 
+> **This repository holds two spreadsheet products** built on the same
+> engine, with the same conventions, the same author (Novality Store) and
+> the same `premium` sheet protection:
+>
+> * **Pet Sitting & Dog Walking Business Spreadsheet** — this README,
+>   `build_pet_sitting_workbook.py`, 27 tabs.
+> * **Social Media Content Calendar & Analytics Planner** —
+>   [README_SOCIAL.md](README_SOCIAL.md),
+>   `build_social_media_workbook.py`, 43 tabs.
+
 Python code that builds a finished, ready-to-sell Excel workbook for pet
 sitters and dog walkers.
 
@@ -83,7 +93,7 @@ generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
 
 Everything needed to build the workbook is packed into
 
-    download/pet-sitting-spreadsheet-source.zip   (216 KB)
+    download/pet-sitting-spreadsheet-source.zip   (220 KB)
 
 [Download the zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip)
 — unzip it anywhere and run:
