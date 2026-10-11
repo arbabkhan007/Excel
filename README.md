@@ -142,7 +142,9 @@ tools/
     validate_workbook.py    static QA on a generated file
     check_sample_data.py    makes sure the demo records join up
     recalc_check.py         calculates every formula and checks the answer
+    export_source_md.py     writes the whole source into SOURCE_CODE.md
 build_pet_sitting_workbook.py
+SOURCE_CODE.md              every file above in one readable document
 ```
 
 **Registers** (the data tabs) expose `spec(cfg) -> SheetSpec` — a list of
