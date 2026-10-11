@@ -87,7 +87,8 @@ SECTIONS = [
      ["tools/validate_workbook.py",
       "tools/check_sample_data.py",
       "tools/recalc_check.py",
-      "tools/export_source_md.py"]),
+      "tools/export_source_md.py",
+      "tools/make_download_zip.py"]),
 ]
 
 

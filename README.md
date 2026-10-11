@@ -79,6 +79,28 @@ generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
 
 ---
 
+## 1b. Download it as one file
+
+Everything needed to build the workbook is packed into
+
+    download/pet-sitting-spreadsheet-source.zip   (216 KB)
+
+[Download the zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip)
+— unzip it anywhere and run:
+
+```bash
+pip install -r requirements.txt
+python build_pet_sitting_workbook.py
+```
+
+It holds the generator, the quality tools, this README, `SOURCE_CODE.md`,
+a `requirements.txt` and a plain `HOW TO RUN.txt`. The vendored copy of
+XlsxWriter in this repository is left out on purpose — the zip runs
+against a normal `pip install XlsxWriter` (tested on 3.2.0). Rebuild it
+after a code change with `python tools/make_download_zip.py`.
+
+---
+
 ## 2. Command line
 
 ```bash
@@ -143,8 +165,11 @@ tools/
     check_sample_data.py    makes sure the demo records join up
     recalc_check.py         calculates every formula and checks the answer
     export_source_md.py     writes the whole source into SOURCE_CODE.md
+    make_download_zip.py    packs download/…-source.zip
 build_pet_sitting_workbook.py
 SOURCE_CODE.md              every file above in one readable document
+download/
+    pet-sitting-spreadsheet-source.zip   ready to download, unzip and run
 ```
 
 **Registers** (the data tabs) expose `spec(cfg) -> SheetSpec` — a list of
