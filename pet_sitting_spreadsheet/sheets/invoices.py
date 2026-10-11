@@ -29,7 +29,10 @@ def spec(cfg: Config) -> SheetSpec:
             note="Link a booking and the invoice total is taken straight "
                  "from it. Leave blank to bill manually with Qty x Rate."),
         Col("booking_total", "Booking total", 12, "money",
-            formula='=IF({booking}{r}="",0,IFERROR(INDEX([[Bookings.total]],'
+            # The booking subtotal is used (not the booking total) because
+            # this invoice adds the tax itself a few columns to the right.
+            formula='=IF({booking}{r}="",0,IFERROR('
+                    'INDEX([[Bookings.subtotal]],'
                     'MATCH({booking}{r},[[Bookings.id]],0)),0))'),
         Col("description", "Description of service", 40, "wrap"),
         Col("qty", "Qty", 8, "number", validate=number_check(0, 10000)),

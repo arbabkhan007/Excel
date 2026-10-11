@@ -70,9 +70,12 @@ generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
   `AGGREGATE`, no array entry required — min/max-if style maths uses
   `SUMPRODUCT`. Everything also survives a trip through Google Sheets.
 * **Example data included** (9 clients, 12 pets, 12 services, 4 staff, 32
-  bookings, visits, 14 invoices, payments, expenses, trips, incidents,
-  messages, inventory and tasks), all cross-referenced so the dashboard is
-  alive on first open. `--blank` ships the empty version.
+  bookings, visits, 23 invoices, 15 payments, 22 expenses, trips,
+  incidents, messages, inventory and tasks), all cross-referenced so the
+  dashboard is alive on first open — a profitable little demo business
+  with a couple of overdue invoices left in on purpose so the alerts and
+  the ageing report have something to show. `--blank` ships the empty
+  version.
 
 ---
 

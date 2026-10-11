@@ -551,6 +551,22 @@ def _build(cfg: Config) -> Sample:
          "Draft"),
         ("Chloe Bennett", -1, "BK-0015", "Drop-in visit - rabbit care", 1, 26,
          "Draft"),
+        ("Luis Hernandez", -21, "", "Dog walking - 30 min x 6", 6, 25,
+         "Paid"),
+        ("Daniel Brooks", -16, "", "Senior pet care visits x 4", 4, 32,
+         "Paid"),
+        ("Sarah Mitchell", -13, "", "Dog walking - 60 min x 4", 4, 40,
+         "Paid"),
+        ("Chloe Bennett", -10, "", "Puppy visits x 5", 5, 28, "Paid"),
+        ("James Okafor", -7, "", "Drop-in visits x 4", 4, 26, "Paid"),
+        ("Megan Foster", -5, "", "Cat feeding - week cover", 7, 22, "Sent"),
+    ]
+    # A few invoices are raised straight from a booking instead of being
+    # typed by hand - that is what the Booking ref column is for.
+    linked_plan = [
+        ("Sarah Mitchell", -3, "BK-0019", "Dog walk - 30 min", "Sent"),
+        ("Megan Foster", -2, "BK-0021", "Cat feeding visit", "Sent"),
+        ("Daniel Brooks", -1, "BK-0022", "Senior pet care visit", "Draft"),
     ]
     for i, (client, offset, booking, desc, qty, rate, status) in enumerate(
             inv_plan):
@@ -562,28 +578,55 @@ def _build(cfg: Config) -> Sample:
             sent_date=d(today, offset) if status != "Draft" else None,
             reminder_sent="Yes" if status == "Sent" and offset < -7 else "No",
             notes="Thank you for your business" if status == "Paid" else ""))
+    for client, offset, booking, desc, status in linked_plan:
+        # No Qty / Rate: the amount comes from the linked booking.
+        s.invoices.append(dict(
+            date=d(today, offset), client=client, booking=booking,
+            description=desc, status=status, fees=0, discount=0, deposit=0,
+            sent_date=d(today, offset) if status != "Draft" else None,
+            reminder_sent="No",
+            notes="Raised from booking " + booking))
 
     # ------------------------------------------------------------- payments
+    # Payments settle the invoice *including* tax, so the invoice shows as
+    # Paid rather than part paid.  `share` < 1 leaves a balance on purpose.
+    def _gross(index: int) -> float:
+        qty, rate = inv_plan[index][4], inv_plan[index][5]
+        gross = qty * rate
+        if (cfg.tax_registered == "Yes"
+                and cfg.prices_include_tax != "Yes"):
+            gross *= 1 + cfg.tax_rate
+        return round(gross, 2)
+
+    #        invoice, day, method, share paid, tip
     pay_plan = [
-        (0, -24, "Card - online", 100.0, 5.0),
-        (1, -23, "Bank transfer", 100.0, 0.0),
-        (2, -21, "Card - in person", 132.0, 0.0),
-        (3, -19, "Bank transfer", 120.0, 10.0),
-        (4, -17, "Digital wallet", 130.0, 0.0),
-        (5, -14, "Cash", 100.0, 0.0),
-        (6, -11, "Card - online", 42.0, 0.0),
-        (7, -8, "Bank transfer", 220.0, 0.0),
-        (8, -6, "Card - online", 72.0, 8.0),
+        (0, -24, "Card - online", 1.0, 5.0),
+        (1, -23, "Bank transfer", 1.0, 0.0),
+        (2, -21, "Card - in person", 1.0, 0.0),
+        (3, -19, "Bank transfer", 1.0, 10.0),
+        (4, -17, "Digital wallet", 1.0, 0.0),
+        (5, -14, "Cash", 1.0, 0.0),
+        (6, -11, "Card - online", 0.45, 0.0),
+        (7, -8, "Bank transfer", 1.0, 0.0),
+        (8, -6, "Card - online", 1.0, 8.0),
+        (14, -20, "Bank transfer", 1.0, 0.0),
+        (15, -15, "Card - online", 1.0, 12.0),
+        (16, -12, "Digital wallet", 1.0, 0.0),
+        (17, -9, "Card - in person", 1.0, 0.0),
+        (18, -6, "Bank transfer", 1.0, 5.0),
+        (9, -3, "Card - online", 1.0, 15.0),
     ]
-    for inv_index, offset, method, amount, tip in pay_plan:
+    for inv_index, offset, method, share, tip in pay_plan:
         client = inv_plan[inv_index][0]
+        amount = round(_gross(inv_index) * share, 2)
         s.payments.append(dict(
             date=d(today, offset), client=client,
             invoice_no=f"INV-{1001 + inv_index}", amount=amount,
             method=method, reference=f"REF{rnd.randint(10000, 99999)}",
             tip=tip, late_fee=0, refund=0,
-            deposit="No", confirmed="Yes", reconciled="Yes",
-            notes="Partial payment - balance due" if inv_index == 6 else ""))
+            deposit="No", confirmed="Yes",
+            reconciled="Yes" if offset < -2 else "No",
+            notes="Part payment - balance to follow" if share < 1 else ""))
 
     # ------------------------------------------------------------- expenses
     exp_plan = [
@@ -596,23 +639,23 @@ def _build(cfg: Config) -> Sample:
         (-24, "Marketing & advertising", "Local Facebook ads", "Meta",
          45.00, "Card - online"),
         (-22, "Insurance", "Business liability - monthly",
-         "PetGuard Business Insurance", 68.00, "Direct debit"),
+         "PetGuard Business Insurance", 48.00, "Direct debit"),
         (-20, "Cleaning supplies", "Enzyme cleaner and towels",
          "CleanCo", 32.10, "Cash"),
         (-18, "Equipment", "Two slip leads and a treat pouch", "PetMart",
-         56.90, "Card - in person"),
+         39.90, "Card - in person"),
         (-16, "Fuel", "Weekly fuel - client visits", "QuickFuel", 58.20,
          "Card - online"),
         (-14, "Vehicle maintenance", "Tyre rotation and oil", "AutoFix",
-         120.00, "Bank transfer"),
+         86.00, "Bank transfer"),
         (-12, "Pet food & treats", "Emergency food supply", "PetMart",
          38.40, "Card - in person"),
         (-11, "Parking & tolls", "City parking - vet transport", "City Park",
          14.00, "Card - in person"),
-        (-9, "Staff wages", "Jamie Lee - fortnight", "Payroll", 684.00,
+        (-9, "Staff wages", "Jamie Lee - fortnight", "Payroll", 396.00,
          "Bank transfer"),
         (-8, "Training & certification", "Canine first aid refresher",
-         "PetCare Academy", 95.00, "Card - online"),
+         "PetCare Academy", 65.00, "Card - online"),
         (-6, "Fuel", "Weekly fuel - client visits", "QuickFuel", 60.80,
          "Card - online"),
         (-5, "Phone & internet", "Mobile plan", "TelCo", 45.00,
@@ -620,7 +663,7 @@ def _build(cfg: Config) -> Sample:
         (-4, "Office & admin", "Printer paper and ink", "OfficeHub", 27.65,
          "Card - online"),
         (-3, "Contractor payments", "Tom Reed - weekend walks", "Tom Reed",
-         210.00, "Bank transfer"),
+         145.00, "Bank transfer"),
         (-2, "Vet & emergency supplies", "First aid kit restock",
          "Riverton Vet Clinic", 42.30, "Card - in person"),
         (-1, "Pet supplies", "Waste bags bulk pack", "PetMart", 24.99,
@@ -641,6 +684,22 @@ def _build(cfg: Config) -> Sample:
             deductible=1.0, receipt="Receipts folder",
             recurring=recurring_map.get(category, "No"),
             approval="Approved", notes=""))
+
+    # Two special cases so the Business use % and Business / personal
+    # columns are shown doing their job.
+    s.expenses.append(dict(
+        date=d(today, -7), category="Phone & internet",
+        description="Home broadband - part business use", supplier="TelCo",
+        amount=55.00, method="Direct debit", type="Business",
+        deductible=0.6, receipt="Receipts folder", recurring="Monthly",
+        approval="Approved",
+        notes="Only 60% is claimable - see the Business use % column"))
+    s.expenses.append(dict(
+        date=d(today, -13), category="Pet supplies",
+        description="Toys for my own dog", supplier="PetMart",
+        amount=32.00, method="Card - in person", type="Personal",
+        deductible=0.0, receipt="", recurring="No", approval="Approved",
+        notes="Personal spend - left out of profit and tax figures"))
 
     # -------------------------------------------------------------- mileage
     for i in range(18):
@@ -848,9 +907,9 @@ def _build(cfg: Config) -> Sample:
 
     # ---------------------------------------------------- owner withdrawals
     s.drawings = [
-        dict(date=d(today, -60), amount=800, notes="Owner drawings"),
-        dict(date=d(today, -30), amount=950, notes="Owner drawings"),
-        dict(date=d(today, -5), amount=700, notes="Owner drawings"),
+        dict(date=d(today, -60), amount=400, notes="Owner drawings"),
+        dict(date=d(today, -30), amount=450, notes="Owner drawings"),
+        dict(date=d(today, -5), amount=350, notes="Owner drawings"),
     ]
 
     return s

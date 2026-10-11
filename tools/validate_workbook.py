@@ -77,6 +77,7 @@ def check_raw_xml(path: str) -> list:
         book = zf.read("xl/workbook.xml").decode()
         sheets = re.findall(r'<sheet name="([^"]+)"[^>]*r:id="rId(\d+)"',
                             book)
+        sheet_names = {name for name, _ in sheets}
         for name, rid in sheets:
             try:
                 xml = zf.read(f"xl/worksheets/sheet{rid}.xml").decode()
@@ -96,6 +97,12 @@ def check_raw_xml(path: str) -> list:
                             and a[1] <= b[3] and b[1] <= a[3]):
                         found.append(f"{name}: merges overlap "
                                      f"{a[4]} / {b[4]}")
+            for location in re.findall(
+                    r'<hyperlink ref="[^"]+" location="([^"]+)"', xml):
+                target = location.split("!")[0].strip("'").replace("''", "'")
+                if target not in sheet_names:
+                    found.append(f"{name}: hyperlink points at missing "
+                                 f"sheet '{target}'")
             for link in re.findall(r'<hyperlink ref="([^"]+)"', xml):
                 lc, lr = _colnum(link)
                 for c1, r1, c2, r2, ref in boxes:

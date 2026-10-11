@@ -45,7 +45,7 @@ TOUR = [
                   "list."),
     ("Print Invoice", "A client-ready invoice - pick the invoice number."),
     ("Print Pet Care", "A one page care sheet to leave with a sitter."),
-    ("Print Visit Report", "A single visit report for the client."),
+    ("Print Visit", "A single visit report for the client."),
     ("Print Forms", "Blank forms: registration, consent, incident, "
                     "timesheet, mileage, feedback and checklists."),
     ("Help", "Instructions, formula notes, troubleshooting and version "

@@ -39,7 +39,9 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
                      f"={quote_sheet(NAME)}!$C${row + 1}")
 
     s.merge(row, 3, 4, "Month", fmts.chrome("label_bold"))
-    s.merge(row, 5, 6, cfg.today.strftime("%B"), fmts.input("text"))
+    # Opens on the whole year so the first screen is full of numbers;
+    # pick a month from the drop down to narrow everything down.
+    s.merge(row, 5, 6, "All year", fmts.input("text"))
     ws.data_validation(row, 5, row, 5, list_from("MonthList"))
     book.define_name("Dash_MonthName",
                      f"={quote_sheet(NAME)}!$F${row + 1}")
