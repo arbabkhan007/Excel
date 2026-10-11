@@ -25,6 +25,13 @@ python build_pet_sitting_workbook.py --help
 
 ## Contents
 
+* [0. How it is put together](#0-how-it-is-put-together)
+  * [The build pipeline](#the-build-pipeline)
+  * [Describing a column](#describing-a-column)
+  * [The rules every formula obeys](#the-rules-every-formula-obeys)
+  * [The hidden `Calc` tab](#the-hidden-calc-tab)
+  * [Every tab at a glance](#every-tab-at-a-glance)
+  * [Every file at a glance](#every-file-at-a-glance)
 * [1. Run it](#1-run-it)
   * [`build_pet_sitting_workbook.py`](#build_pet_sitting_workbookpy)
 * [2. The package](#2-the-package)
@@ -72,6 +79,196 @@ python build_pet_sitting_workbook.py --help
   * [`tools/recalc_check.py`](#toolsrecalc_checkpy)
   * [`tools/export_source_md.py`](#toolsexport_source_mdpy)
   * [`tools/make_download_zip.py`](#toolsmake_download_zippy)
+* [Appendix A. Data dictionary](#appendix-a-data-dictionary)
+
+---
+
+## 0. How it is put together
+
+Everything here is plain Python writing a `.xlsx` file through XlsxWriter.
+There is no template workbook, no copy of an existing file and no manual
+step: the spreadsheet is described in code, and the code is the only
+source of truth for what ends up in a cell.
+
+Two kinds of tab exist.
+
+* A **register** is a data tab — a header row and hundreds of rows under
+  it. Its module exposes `NAME`, a `spec(cfg)` that returns a
+  `SheetSpec` (a list of `Col` objects) and, optionally, a
+  `decorate(sheet, fmts, cfg)` that adds totals or notes underneath the
+  grid. Nothing in a register module writes cells directly.
+* A **page** is a hand-built tab — the dashboards, the reports, the
+  printables, the welcome and help pages. Its module exposes
+  `build(book, fmts, cfg, reg)` and writes with `SheetWriter` helpers:
+  `banner`, `section`, `kpi`, `table_head`, `calc_row`, `note`,
+  `bullets`, `field`, `merge`, `finish`.
+
+### The build pipeline
+
+`build_pet_sitting_workbook.py` parses the command line into a `Config`, then
+`pet_sitting_spreadsheet.build.build_workbook(path, cfg)` does six things in order:
+
+1. **Open the workbook** and stamp the document properties — title,
+   author, company, keywords and a comment naming the protection
+   password. The author is the same on every generated file.
+2. **Build the `FormatBook`.** Every visual style the product uses is
+   created once, up front: a style (text, date, money, percent, status,
+   link, …) crossed with a mode (`INPUT` cream and unlocked, `CALC` grey
+   and locked, `PLAIN`), plus the page chrome (titles, section bars, KPI
+   tiles, notes) and the conditional formatting palette.
+3. **Register every `SheetSpec` first**, before a single tab is written.
+   This is what lets any sheet refer to any other sheet's columns by
+   name regardless of which tab happens to be written first.
+4. **Write the tabs in `SHEET_ORDER`.** Registers go through
+   `build_register()` — `SheetWriter.grid(spec)` writes widths, formats,
+   headers, formulas, sample rows, drop downs, header comments,
+   conditional formats, the autofilter, frozen panes and the print
+   setup — then the module's `decorate()` runs and the sheet is
+   protected. Pages call their own `build()`.
+5. **Define the live lookup names** (`ContentIDs`, `TeamNames`, …) from
+   the registry. Each is an `OFFSET` range that grows and shrinks with
+   the number of filled rows, so a drop down never shows blanks.
+6. **Hide the `Calc` engine**, activate the first tab and close the file.
+
+### Describing a column
+
+A column is declared once, for one row, with placeholders:
+
+```python
+Col("er", "Engagement rate", 11, "percent",
+    formula='=IFERROR({engagements}{r}/{reach}{r},"")',
+    cf=[{"type": "cell", "criteria": ">=", "value": "=TargetEngagement",
+         "fmt": "good"}])
+```
+
+`Col` carries the key, the header text, the width, the style, the
+formula template, the data validation, the header comment, the
+conditional formats, whether the column is hidden and which outline
+group it belongs to. `Registry.render()` expands the template per row:
+
+| Token | Becomes |
+|-------|---------|
+| `{r}` / `{r_prev}` | this row number / the row above |
+| `{key}` | the column letter of another column on the same sheet |
+| `{first}` / `{last}` | the first and last data row of the sheet |
+| `[[Sheet.key]]` | an absolute range on another sheet, e.g. `'Content Calendar'!$G$5:$G$604` |
+| `[[Sheet.key#12]]` | one cell of that column |
+| `[[Sheet.key#]]` | the same row as the formula being written |
+
+Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
+`min_if`, `blank_if`, `safe`, `lookup`, `dynamic_name`, `quote_sheet`.
+
+### The rules every formula obeys
+
+* **Excel 2010 safe.** `SUMIFS`, `COUNTIFS`, `INDEX/MATCH`, `SMALL`,
+  `LARGE`, `RANK`, `EDATE`, `EOMONTH`, `SUMPRODUCT(MAX(...))`. No
+  dynamic arrays, no `XLOOKUP`, no `IFS`, no `AGGREGATE`, nothing that
+  needs Ctrl+Shift+Enter. The file opens in Excel 2010 and later, Google
+  Sheets, LibreOffice and Numbers.
+* **No charts.** The vendored XlsxWriter in this repository cannot write
+  them, so trends are drawn with `add_sparkline`, data bars and
+  three-colour scales — which also survive a Google Sheets import.
+* **Nth-row lookups without array formulas.** Hidden composite key
+  columns (`date + ROW()/100000`) plus `SMALL` and `INDEX/MATCH` answer
+  "the third thing on 14 March" and "the next eight due" with ordinary
+  formulas.
+* **One number, one home.** Nothing is typed into two tabs. Every other
+  appearance of a figure is a formula pointing back at the one place it
+  was entered.
+* **Locked where it matters.** Formula cells are locked, input cells are
+  not, and every sheet is protected with the same password — so the
+  maths cannot be typed over by accident but the cream cells stay open.
+
+### The hidden `Calc` tab
+
+Dashboards do not aggregate the registers directly. A hidden sheet
+pre-computes one row per month, per platform/service, per category and
+per owner, each with its own ranking key, and the visible pages read
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy
+`SUMIFS` work in one place, keeps recalculation predictable, and makes
+every dashboard number traceable to a single cell.
+
+
+### Every tab at a glance
+
+27 tabs in the order they appear in the finished workbook. "Rows" is the capacity of a register at the default `--rows` setting.
+
+| # | Tab | Kind | Written by | Columns | Rows |
+|---|-----|------|------------|--------:|-----:|
+| 1 | **Start Here** | page | `pet_sitting_spreadsheet/build.py` | - | - |
+| 2 | **Dashboard** | page | `pet_sitting_spreadsheet/sheets/dashboard.py` | - | - |
+| 3 | **Settings** | page | `pet_sitting_spreadsheet/sheets/settings.py` | - | - |
+| 4 | **Lists** | page | `pet_sitting_spreadsheet/sheets/lists.py` | - | - |
+| 5 | **Services** | register | `pet_sitting_spreadsheet/sheets/services.py` | 20 | 50 |
+| 6 | **Clients** | register | `pet_sitting_spreadsheet/sheets/clients.py` | 38 | 250 |
+| 7 | **Pets** | register | `pet_sitting_spreadsheet/sheets/pets.py` | 46 | 250 |
+| 8 | **Bookings** | register | `pet_sitting_spreadsheet/sheets/bookings.py` | 52 | 400 |
+| 9 | **Visit Log** | register | `pet_sitting_spreadsheet/sheets/visits.py` | 36 | 400 |
+| 10 | **Health Log** | register | `pet_sitting_spreadsheet/sheets/health.py` | 22 | 200 |
+| 11 | **Incidents** | register | `pet_sitting_spreadsheet/sheets/incidents.py` | 23 | 100 |
+| 12 | **Messages** | register | `pet_sitting_spreadsheet/sheets/messages.py` | 20 | 200 |
+| 13 | **Invoices** | register | `pet_sitting_spreadsheet/sheets/invoices.py` | 30 | 300 |
+| 14 | **Payments** | register | `pet_sitting_spreadsheet/sheets/payments.py` | 20 | 300 |
+| 15 | **Expenses** | register | `pet_sitting_spreadsheet/sheets/expenses.py` | 21 | 300 |
+| 16 | **Mileage** | register | `pet_sitting_spreadsheet/sheets/mileage.py` | 24 | 300 |
+| 17 | **Staff** | register | `pet_sitting_spreadsheet/sheets/staff.py` | 28 | 40 |
+| 18 | **Inventory** | register | `pet_sitting_spreadsheet/sheets/inventory.py` | 19 | 120 |
+| 19 | **Reminders** | register | `pet_sitting_spreadsheet/sheets/reminders.py` | 10 | 40 |
+| 20 | **Reports** | page | `pet_sitting_spreadsheet/sheets/reports.py` | - | - |
+| 21 | **Budget** | page | `pet_sitting_spreadsheet/sheets/budget.py` | - | - |
+| 22 | **Print Invoice** | page | `pet_sitting_spreadsheet/sheets/printables.py` | - | - |
+| 23 | **Print Pet Care** | page | `pet_sitting_spreadsheet/sheets/printables.py` | - | - |
+| 24 | **Print Visit** | page | `pet_sitting_spreadsheet/sheets/printables.py` | - | - |
+| 25 | **Print Forms** | page | `pet_sitting_spreadsheet/sheets/printables.py` | - | - |
+| 26 | **Help** | page | `pet_sitting_spreadsheet/sheets/help_tab.py` | - | - |
+| 27 | **Calc** | register | `pet_sitting_spreadsheet/sheets/calc.py` | 44 | 250 |
+
+### Every file at a glance
+
+| File | Lines | What it is |
+|------|------:|------------|
+| [`build_pet_sitting_workbook.py`](#build_pet_sitting_workbookpy) | 32 | Build the Pet Sitting & Dog Walking Business Spreadsheet |
+| [`pet_sitting_spreadsheet/__init__.py`](#pet_sitting_spreadsheet__init__py) | 29 | Pet Sitting & Dog Walking Business Spreadsheet ============================================== Generates a... |
+| [`pet_sitting_spreadsheet/__main__.py`](#pet_sitting_spreadsheet__main__py) | 6 | ``python -m pet_sitting_spreadsheet`` |
+| [`pet_sitting_spreadsheet/cli.py`](#pet_sitting_spreadsheetclipy) | 111 | Command line front end |
+| [`pet_sitting_spreadsheet/config.py`](#pet_sitting_spreadsheetconfigpy) | 210 | Configuration for the Pet Sitting & Dog Walking Business Spreadsheet generator |
+| [`pet_sitting_spreadsheet/layout.py`](#pet_sitting_spreadsheetlayoutpy) | 243 | Layout engine |
+| [`pet_sitting_spreadsheet/formats.py`](#pet_sitting_spreadsheetformatspy) | 190 | Cell format factory |
+| [`pet_sitting_spreadsheet/writer.py`](#pet_sitting_spreadsheetwriterpy) | 444 | Sheet writing helpers shared by every tab of the workbook |
+| [`pet_sitting_spreadsheet/names.py`](#pet_sitting_spreadsheetnamespy) | 40 | Workbook level defined names that point at the register sheets |
+| [`pet_sitting_spreadsheet/build.py`](#pet_sitting_spreadsheetbuildpy) | 148 | Workbook builder: puts every tab together in the right order |
+| [`pet_sitting_spreadsheet/sample_data.py`](#pet_sitting_spreadsheetsample_datapy) | 903 | Demo data |
+| [`pet_sitting_spreadsheet/sheets/__init__.py`](#pet_sitting_spreadsheetsheets__init__py) | 14 | One module per tab of the workbook |
+| [`pet_sitting_spreadsheet/sheets/common.py`](#pet_sitting_spreadsheetsheetscommonpy) | 110 | Small building blocks shared by the register sheets |
+| [`pet_sitting_spreadsheet/sheets/lists.py`](#pet_sitting_spreadsheetsheetslistspy) | 190 | The `Lists` tab: every drop down list in the workbook lives here |
+| [`pet_sitting_spreadsheet/sheets/settings.py`](#pet_sitting_spreadsheetsheetssettingspy) | 274 | The `Settings` tab |
+| [`pet_sitting_spreadsheet/sheets/services.py`](#pet_sitting_spreadsheetsheetsservicespy) | 92 | `Services` - the service catalogue and price list that drives booking costs |
+| [`pet_sitting_spreadsheet/sheets/clients.py`](#pet_sitting_spreadsheetsheetsclientspy) | 152 | `Clients` - the client database with lifetime value and follow-up flags |
+| [`pet_sitting_spreadsheet/sheets/pets.py`](#pet_sitting_spreadsheetsheetspetspy) | 136 | `Pets` - full pet profiles: care routine, medical, vaccinations, warnings |
+| [`pet_sitting_spreadsheet/sheets/bookings.py`](#pet_sitting_spreadsheetsheetsbookingspy) | 225 | `Bookings` - the scheduling engine: prices, surcharges, conflicts, alerts |
+| [`pet_sitting_spreadsheet/sheets/visits.py`](#pet_sitting_spreadsheetsheetsvisitspy) | 134 | `Visit Log` - the daily pet care log, one row per visit or walk |
+| [`pet_sitting_spreadsheet/sheets/health.py`](#pet_sitting_spreadsheetsheetshealthpy) | 85 | `Health Log` - medication administration, vaccinations and vet events |
+| [`pet_sitting_spreadsheet/sheets/incidents.py`](#pet_sitting_spreadsheetsheetsincidentspy) | 137 | `Incidents` - safety, emergency contacts and the incident report register |
+| [`pet_sitting_spreadsheet/sheets/messages.py`](#pet_sitting_spreadsheetsheetsmessagespy) | 85 | `Messages` - client communication, feedback, complaints and follow-ups |
+| [`pet_sitting_spreadsheet/sheets/invoices.py`](#pet_sitting_spreadsheetsheetsinvoicespy) | 158 | `Invoices` - invoice register with automatic numbering, tax and ageing |
+| [`pet_sitting_spreadsheet/sheets/payments.py`](#pet_sitting_spreadsheetsheetspaymentspy) | 89 | `Payments` - money received, deposits, tips, refunds and reconciliation |
+| [`pet_sitting_spreadsheet/sheets/expenses.py`](#pet_sitting_spreadsheetsheetsexpensespy) | 87 | `Expenses` - every business cost, with tax, deductibility and approvals |
+| [`pet_sitting_spreadsheet/sheets/mileage.py`](#pet_sitting_spreadsheetsheetsmileagepy) | 96 | `Mileage` - trip log with odometer readings and reimbursement maths |
+| [`pet_sitting_spreadsheet/sheets/staff.py`](#pet_sitting_spreadsheetsheetsstaffpy) | 120 | `Staff` - team directory, workload, timesheet totals and pay |
+| [`pet_sitting_spreadsheet/sheets/inventory.py`](#pet_sitting_spreadsheetsheetsinventorypy) | 99 | `Inventory` - pet supplies, stock levels, reorder alerts and value |
+| [`pet_sitting_spreadsheet/sheets/reminders.py`](#pet_sitting_spreadsheetsheetsreminderspy) | 255 | `Reminders` - the alert centre plus a custom task list |
+| [`pet_sitting_spreadsheet/sheets/calc.py`](#pet_sitting_spreadsheetsheetscalcpy) | 213 | `Calc` - hidden helper sheet |
+| [`pet_sitting_spreadsheet/sheets/dashboard.py`](#pet_sitting_spreadsheetsheetsdashboardpy) | 375 | `Dashboard` - the one page view of the business |
+| [`pet_sitting_spreadsheet/sheets/reports.py`](#pet_sitting_spreadsheetsheetsreportspy) | 380 | `Reports` - printable business analytics for any date range |
+| [`pet_sitting_spreadsheet/sheets/budget.py`](#pet_sitting_spreadsheetsheetsbudgetpy) | 272 | `Budget` - targets, budget vs actual, break-even, forecast and cash flow |
+| [`pet_sitting_spreadsheet/sheets/start_here.py`](#pet_sitting_spreadsheetsheetsstart_herepy) | 219 | `Start Here` - welcome page, navigation menu and setup checklist |
+| [`pet_sitting_spreadsheet/sheets/printables.py`](#pet_sitting_spreadsheetsheetsprintablespy) | 751 | The four print-ready tabs: invoice, pet care sheet, visit report, forms |
+| [`pet_sitting_spreadsheet/sheets/help_tab.py`](#pet_sitting_spreadsheetsheetshelp_tabpy) | 295 | `Help` - instructions, formula notes, troubleshooting and version log |
+| [`tools/validate_workbook.py`](#toolsvalidate_workbookpy) | 287 | Static checks on a generated workbook |
+| [`tools/check_sample_data.py`](#toolscheck_sample_datapy) | 171 | Cross-check the example records in a generated workbook |
+| [`tools/recalc_check.py`](#toolsrecalc_checkpy) | 216 | Really calculate every formula in a generated workbook and report any cell that ends up as an Excel error... |
+| [`tools/export_source_md.py`](#toolsexport_source_mdpy) | 732 | Write every source file of a generator into one markdown document |
+| [`tools/make_download_zip.py`](#toolsmake_download_zippy) | 182 | Pack a generator into a single zip people can download and run |
 
 ---
 
@@ -88,7 +285,25 @@ The workbook lands in `output/Pet Sitting Business Spreadsheet.xlsx`.
 
 ### `build_pet_sitting_workbook.py`
 
-Build the Pet Sitting & Dog Walking Business Spreadsheet. *(32 lines)*
+*32 lines*
+
+> Build the Pet Sitting & Dog Walking Business Spreadsheet.
+>
+> Double click it, or run::
+>
+>     python build_pet_sitting_workbook.py
+>
+> The finished .xlsx lands in the ``output`` folder next to this script.
+> Author of the generated workbook: Novality Store.
+>
+> Options (all optional)::
+>
+>     python build_pet_sitting_workbook.py --blank          # no example data
+>     python build_pet_sitting_workbook.py --currency "£" --currency-code GBP
+>     python build_pet_sitting_workbook.py --unit miles
+>     python build_pet_sitting_workbook.py -o "~/Desktop/Pet Sitting.xlsx"
+>
+> See ``python build_pet_sitting_workbook.py --help`` for the full list.
 
 ````python
 #!/usr/bin/env python3
@@ -133,7 +348,26 @@ Configuration, the formula template engine, cell formats, the sheet writer and t
 
 ### `pet_sitting_spreadsheet/__init__.py`
 
-Pet Sitting & Dog Walking Business Spreadsheet ============================================== Generates a ready-to-sell Excel workbook for pet sitters and dog walkers: clients, pets, bookings, visit logs, health records, invoices, payments, expenses, mileage, staff, inventory, a dashboard, reports, a budget, a reminder centre and printable forms. *(29 lines)*
+*29 lines*
+
+> Pet Sitting & Dog Walking Business Spreadsheet
+> ==============================================
+>
+> Generates a ready-to-sell Excel workbook for pet sitters and dog walkers:
+> clients, pets, bookings, visit logs, health records, invoices, payments,
+> expenses, mileage, staff, inventory, a dashboard, reports, a budget, a
+> reminder centre and printable forms.
+>
+>     python -m pet_sitting_spreadsheet --output "My Workbook.xlsx"
+>
+> or from Python::
+>
+>     from pet_sitting_spreadsheet import build_workbook, Config
+>     build_workbook("workbook.xlsx", Config(include_sample_data=False))
+>
+> Every formula cell is locked and every sheet is protected with the password
+> in :class:`~pet_sitting_spreadsheet.config.Config` (default ``premium``), so
+> the maths cannot be edited by accident while the input cells stay open.
 
 ````python
 """
@@ -169,7 +403,9 @@ __author__ = AUTHOR
 
 ### `pet_sitting_spreadsheet/__main__.py`
 
-``python -m pet_sitting_spreadsheet``. *(6 lines)*
+*6 lines*
+
+> ``python -m pet_sitting_spreadsheet``.
 
 ````python
 """``python -m pet_sitting_spreadsheet``."""
@@ -182,7 +418,21 @@ if __name__ == "__main__":
 
 ### `pet_sitting_spreadsheet/cli.py`
 
-Command line front end. *(111 lines)*
+*111 lines · 3 functions*
+
+> Command line front end.
+>
+> python -m pet_sitting_spreadsheet
+> python -m pet_sitting_spreadsheet -o "output/Pet Sitting.xlsx" --blank
+> python -m pet_sitting_spreadsheet --currency "£" --unit miles --rows 500
+
+| Defines | What it does |
+|---------|--------------|
+| `build_parser()` |  |
+| `config_from_args(args)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `DEFAULT_OUTPUT` (os.path.join(...)).
 
 ````python
 """Command line front end.
@@ -300,7 +550,23 @@ if __name__ == "__main__":        # pragma: no cover
 
 ### `pet_sitting_spreadsheet/config.py`
 
-Configuration for the Pet Sitting & Dog Walking Business Spreadsheet generator. *(210 lines)*
+*210 lines · 3 classes*
+
+> Configuration for the Pet Sitting & Dog Walking Business Spreadsheet generator.
+>
+> Everything that a shop owner may want to re-brand or re-price lives here, so the
+> workbook can be regenerated for a different store, currency or country without
+> touching any of the sheet code.
+>
+> Author of the generated workbooks: Novality Store.
+
+| Defines | What it does |
+|---------|--------------|
+| `class Palette` |  |
+| `class BusinessDefaults` | Sample values written into the Settings sheet |
+| `class Config` | All generator options |
+
+**Module constants:** `AUTHOR` ('Novality Store'), `PRODUCT_NAME` ('Pet Sitting & Dog Walking Business Spreadsheet'), `PRODUCT_SUBTITLE` ('Client Booking, Pet Care Log, Invoices, Payments, Mileag...), `PRODUCT_VERSION` ('1.0.0'), `PRODUCT_LISTING_TITLE` ('Pet Sitting Business Spreadsheet, Dog Walker Client Book...), `FORMULA_PASSWORD` ('premium'), `DEFAULT_ROWS` (21 entries).
 
 ````python
 """
@@ -517,7 +783,40 @@ class Config:
 
 ### `pet_sitting_spreadsheet/layout.py`
 
-Layout engine. *(243 lines)*
+*243 lines · 3 classes · 10 functions*
+
+> Layout engine.
+>
+> The workbook is described declaratively: every register sheet (Clients, Pets,
+> Bookings, ...) is a :class:`SheetSpec` made of :class:`Col` objects.  Formulas
+> are written as templates that never contain hard coded column letters, so
+> columns can be reordered or inserted without breaking a single formula:
+>
+>     "=IF({client}{r}=\"\",\"\",SUMIFS([[Payments.net]],[[Payments.client]],{client}{r}))"
+>
+>     {r}            -> the current Excel row number (1 based)
+>     {key}          -> column letter of the column `key` on the *same* sheet
+>     [[Sheet.key]]  -> absolute range of that column's data rows, e.g.
+>                       Payments!$K$5:$K$304
+>     [[Sheet.key#r]]-> absolute single cell of that column on row r
+
+| Defines | What it does |
+|---------|--------------|
+| `col_letter(index)` | 0 based column index -> Excel column letter |
+| `quote_sheet(name)` | Quote a sheet name for use inside a formula when it needs it |
+| `cell_ref(col, row, absolute)` |  |
+| `class Col` | One column of a register sheet |
+| `class SheetSpec` | A register sheet: title band, header row and N pre-built data rows |
+| `class Registry` | Lookup table of every registered :class:`SheetSpec` |
+| `max_if(value_range, *conditions)` | MAX of `value_range` where all conditions hold (no CSE required) |
+| `min_if(value_range, *conditions, *, sentinel)` | MIN of `value_range` where all conditions hold (no CSE required) |
+| `blank_if(test, result)` |  |
+| `safe(expr, fallback)` |  |
+| `lookup(value, table_range, index_range, fallback)` | INDEX/MATCH lookup (works left or right, unlike VLOOKUP) |
+| `dynamic_name(sheet, letter, first, last, count_text)` | OFFSET based defined name that grows with the populated rows |
+| `join_nonblank(parts)` | Build `a & b & c` style concatenation |
+
+**Module constants:** `TITLE_ROW` (1), `SUBTITLE_ROW` (2), `NAV_ROW` (3), `HEADER_ROW` (4), `DATA_ROW` (5).
 
 ````python
 """
@@ -767,7 +1066,23 @@ def join_nonblank(parts: Sequence[str]) -> str:
 
 ### `pet_sitting_spreadsheet/formats.py`
 
-Cell format factory. *(190 lines)*
+*190 lines · 1 class*
+
+> Cell format factory.
+>
+> Two things matter here:
+>
+> * **Input cells** are unlocked (``locked: False``) and painted cream, so the
+>   user can type in them while the sheet is protected.
+> * **Formula cells** are locked (``locked: True``) and painted cool grey.  With
+>   the sheet protection password in place ("premium" by default) they cannot be
+>   overwritten by accident.
+
+| Defines | What it does |
+|---------|--------------|
+| `class FormatBook` | Creates (and caches) every :class:`xlsxwriter.format.Format` used |
+
+**Module constants:** `P` (Palette), `INPUT` ('input'), `CALC` ('calc'), `PLAIN` ('plain').
 
 ````python
 """
@@ -964,7 +1279,29 @@ class FormatBook:
 
 ### `pet_sitting_spreadsheet/writer.py`
 
-Sheet writing helpers shared by every tab of the workbook. *(444 lines)*
+*444 lines · 1 class · 7 functions*
+
+> Sheet writing helpers shared by every tab of the workbook.
+>
+> :class:`SheetWriter` wraps an XlsxWriter worksheet and adds the house style:
+> title band, navigation strip, section headers, KPI tiles, label/value settings
+> rows and - most importantly - :meth:`SheetWriter.grid`, which turns a
+> :class:`~pet_sitting_spreadsheet.layout.SheetSpec` into a finished register
+> with headers, drop downs, conditional formats, sample rows, frozen panes and
+> locked formula cells.
+
+| Defines | What it does |
+|---------|--------------|
+| `class SheetWriter` | Convenience wrapper around a worksheet |
+| `yes_no(validate_note)` |  |
+| `list_from(name)` | Drop down fed by a defined name (see lists.py) |
+| `date_check()` |  |
+| `number_check(minimum, maximum, decimal)` |  |
+| `cf_text(text, fmt, criteria)` |  |
+| `cf_formula(formula, fmt)` |  |
+| `cf_bar(color)` |  |
+
+**Module constants:** `P` (Palette), `NAV_LINKS` (9 items), `PROTECT_OPTIONS` (15 entries).
 
 ````python
 """
@@ -1415,7 +1752,21 @@ def cf_bar(color: str = "#2E7D8F") -> Dict[str, Any]:
 
 ### `pet_sitting_spreadsheet/names.py`
 
-Workbook level defined names that point at the register sheets. *(40 lines)*
+*40 lines · 1 function*
+
+> Workbook level defined names that point at the register sheets.
+>
+> The drop down lists on the `Lists` tab define their own names; these are the
+> ones that have to follow live data (client names, pet references, invoice
+> numbers, ...), so they are built from the registry once every register has
+> been created.  Each one is an ``OFFSET`` range that grows and shrinks with
+> the number of filled rows.
+
+| Defines | What it does |
+|---------|--------------|
+| `define_cross_sheet_names(book, reg)` | Create the live lookup names |
+
+**Module constants:** `CROSS_SHEET_NAMES` (10 entries).
 
 ````python
 """Workbook level defined names that point at the register sheets.
@@ -1462,7 +1813,23 @@ def define_cross_sheet_names(book, reg: Registry) -> None:
 
 ### `pet_sitting_spreadsheet/build.py`
 
-Workbook builder: puts every tab together in the right order. *(148 lines)*
+*148 lines · 4 functions*
+
+> Workbook builder: puts every tab together in the right order.
+>
+> Typical use::
+>
+>     from pet_sitting_spreadsheet import build_workbook
+>     build_workbook("Pet Sitting Business Spreadsheet.xlsx")
+
+| Defines | What it does |
+|---------|--------------|
+| `_start_here(book, fmts, cfg, reg)` |  |
+| `build_register(book, fmts, cfg, reg, module)` | Create one register sheet from its :class:`SheetSpec` |
+| `build_workbook(path, cfg)` | Write the whole product to *path* and return the path |
+| `_set_properties(book, cfg)` |  |
+
+**Module constants:** `REGISTER_MODULES` (16 items), `SHEET_ORDER` (27 items), `PAGE_BUILDERS` (11 entries), `REGISTER_BY_NAME` ({module.NAME: module for module in REGISTER_MODULES}).
 
 ````python
 """Workbook builder: puts every tab together in the right order.
@@ -1617,7 +1984,23 @@ def _set_properties(book, cfg: Config) -> None:
 
 ### `pet_sitting_spreadsheet/sample_data.py`
 
-Demo data. *(903 lines)*
+*903 lines · 1 class · 4 functions*
+
+> Demo data.
+>
+> Sample clients, pets, bookings, invoices, payments, expenses and trips are
+> written into the input (cream) cells so the dashboard, reports and reminders
+> show meaningful numbers the moment the workbook is opened.  Everything is
+> dated relative to the build date and can be switched off with
+> ``--no-sample-data``.
+
+| Defines | What it does |
+|---------|--------------|
+| `d(base, offset)` |  |
+| `t(hour, minute)` |  |
+| `class Sample` | fields: clients, pets, services, staff, bookings, visits, invoices, payments |
+| `get(cfg)` | Build (once) the demo dataset for this configuration |
+| `_build(cfg)` |  |
 
 ````python
 """
@@ -2533,7 +2916,9 @@ One module per data tab. Each returns a `SheetSpec` - a list of columns with the
 
 ### `pet_sitting_spreadsheet/sheets/__init__.py`
 
-One module per tab of the workbook. *(14 lines)*
+*14 lines*
+
+> One module per tab of the workbook.
 
 ````python
 """One module per tab of the workbook."""
@@ -2554,7 +2939,25 @@ __all__ = [
 
 ### `pet_sitting_spreadsheet/sheets/common.py`
 
-Small building blocks shared by the register sheets. *(110 lines)*
+*110 lines · 11 functions*
+
+> Small building blocks shared by the register sheets.
+
+| Defines | What it does |
+|---------|--------------|
+| `id_col(trigger, prefix, digits, width, header, note)` | Auto numbered ID column (blank until the trigger column is filled) |
+| `month_col(date_key, key, header, width)` |  |
+| `alert_cf()` | Traffic light colouring for the 'Alert' / 'Check' columns |
+| `status_cf()` |  |
+| `money_cf()` |  |
+| `owing_cf()` |  |
+| `dup_cf()` |  |
+| `flag_yes_no_cf()` |  |
+| `yesno(note)` |  |
+| `rating_validation()` |  |
+| `blank(trigger, body)` | `=IF(trigger="","",body)` with the standard row placeholders |
+
+**Module constants:** `ROW_OFFSET` (HEADER_ROW).
 
 ````python
 """Small building blocks shared by the register sheets."""
@@ -2671,7 +3074,20 @@ def blank(trigger: str, body: str) -> str:
 
 ### `pet_sitting_spreadsheet/sheets/lists.py`
 
-The `Lists` tab: every drop down list in the workbook lives here. *(190 lines)*
+*190 lines · 3 functions*
+
+> The `Lists` tab: every drop down list in the workbook lives here.
+>
+> Each column becomes a *dynamic* defined name (OFFSET + COUNTIF) so the user can
+> add or remove options and every drop down in the workbook follows along.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+| `ref(name)` | A1 reference to this list's column on the current row, e.g |
+| `options(name)` | Static copy of a list (used for sample data sanity) |
+
+**Module constants:** `SHEET` ('Lists'), `LISTS` (OrderedDict(...)), `ROWS` (40).
 
 ````python
 """
@@ -2868,7 +3284,20 @@ def options(name: str) -> List[str]:
 
 ### `pet_sitting_spreadsheet/sheets/settings.py`
 
-The `Settings` tab. *(274 lines)*
+*274 lines · 2 functions*
+
+> The `Settings` tab.
+>
+> Every rate, surcharge, prefix and reminder window used by the rest of the
+> workbook is entered once here and published as a defined name (TaxRate,
+> MileageRate, PaymentTermsDays ...) so the formulas stay readable.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+| `_time(text)` |  |
+
+**Module constants:** `SHEET` ('Settings'), `LAST_COL` (8), `HOLIDAY_ROWS` (30).
 
 ````python
 """
@@ -3149,7 +3578,15 @@ def _time(text: str) -> _dt.time:
 
 ### `pet_sitting_spreadsheet/sheets/services.py`
 
-`Services` - the service catalogue and price list that drives booking costs. *(92 lines)*
+*92 lines · 1 function*
+
+> `Services` - the service catalogue and price list that drives booking costs.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Services').
 
 ````python
 """`Services` - the service catalogue and price list that drives booking costs."""
@@ -3248,7 +3685,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/clients.py`
 
-`Clients` - the client database with lifetime value and follow-up flags. *(152 lines)*
+*152 lines · 1 function*
+
+> `Clients` - the client database with lifetime value and follow-up flags.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Clients').
 
 ````python
 """`Clients` - the client database with lifetime value and follow-up flags."""
@@ -3407,7 +3852,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/pets.py`
 
-`Pets` - full pet profiles: care routine, medical, vaccinations, warnings. *(136 lines)*
+*136 lines · 1 function*
+
+> `Pets` - full pet profiles: care routine, medical, vaccinations, warnings.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Pets').
 
 ````python
 """`Pets` - full pet profiles: care routine, medical, vaccinations, warnings."""
@@ -3550,7 +4003,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/bookings.py`
 
-`Bookings` - the scheduling engine: prices, surcharges, conflicts, alerts. *(225 lines)*
+*225 lines · 2 functions*
+
+> `Bookings` - the scheduling engine: prices, surcharges, conflicts, alerts.
+
+| Defines | What it does |
+|---------|--------------|
+| `_svc(field, fallback)` | INDEX/MATCH into the Services table for the booked service |
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Bookings').
 
 ````python
 """`Bookings` - the scheduling engine: prices, surcharges, conflicts, alerts."""
@@ -3782,7 +4244,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/visits.py`
 
-`Visit Log` - the daily pet care log, one row per visit or walk. *(134 lines)*
+*134 lines · 2 functions*
+
+> `Visit Log` - the daily pet care log, one row per visit or walk.
+
+| Defines | What it does |
+|---------|--------------|
+| `_bk(field, fallback)` |  |
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Visit Log').
 
 ````python
 """`Visit Log` - the daily pet care log, one row per visit or walk."""
@@ -3923,7 +4394,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/health.py`
 
-`Health Log` - medication administration, vaccinations and vet events. *(85 lines)*
+*85 lines · 1 function*
+
+> `Health Log` - medication administration, vaccinations and vet events.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Health Log').
 
 ````python
 """`Health Log` - medication administration, vaccinations and vet events."""
@@ -4015,7 +4494,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/incidents.py`
 
-`Incidents` - safety, emergency contacts and the incident report register. *(137 lines)*
+*137 lines · 2 functions*
+
+> `Incidents` - safety, emergency contacts and the incident report register.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+| `decorate(sheet, fmts, cfg)` | Write the emergency contact directory above the register |
+
+**Module constants:** `NAME` ('Incidents'), `DIRECTORY_HEADER_ROW` (5), `REGISTER_HEADER_ROW` (17), `DIRECTORY` (9 items).
 
 ````python
 """`Incidents` - safety, emergency contacts and the incident report register."""
@@ -4159,7 +4647,15 @@ def decorate(sheet, fmts, cfg: Config) -> None:
 
 ### `pet_sitting_spreadsheet/sheets/messages.py`
 
-`Messages` - client communication, feedback, complaints and follow-ups. *(85 lines)*
+*85 lines · 1 function*
+
+> `Messages` - client communication, feedback, complaints and follow-ups.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Messages').
 
 ````python
 """`Messages` - client communication, feedback, complaints and follow-ups."""
@@ -4251,7 +4747,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/invoices.py`
 
-`Invoices` - invoice register with automatic numbering, tax and ageing. *(158 lines)*
+*158 lines · 1 function*
+
+> `Invoices` - invoice register with automatic numbering, tax and ageing.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Invoices').
 
 ````python
 """`Invoices` - invoice register with automatic numbering, tax and ageing."""
@@ -4416,7 +4920,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/payments.py`
 
-`Payments` - money received, deposits, tips, refunds and reconciliation. *(89 lines)*
+*89 lines · 2 functions*
+
+> `Payments` - money received, deposits, tips, refunds and reconciliation.
+
+| Defines | What it does |
+|---------|--------------|
+| `_inv(field, fallback)` |  |
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Payments').
 
 ````python
 """`Payments` - money received, deposits, tips, refunds and reconciliation."""
@@ -4512,7 +5025,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/expenses.py`
 
-`Expenses` - every business cost, with tax, deductibility and approvals. *(87 lines)*
+*87 lines · 1 function*
+
+> `Expenses` - every business cost, with tax, deductibility and approvals.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Expenses').
 
 ````python
 """`Expenses` - every business cost, with tax, deductibility and approvals."""
@@ -4606,7 +5127,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/mileage.py`
 
-`Mileage` - trip log with odometer readings and reimbursement maths. *(96 lines)*
+*96 lines · 1 function*
+
+> `Mileage` - trip log with odometer readings and reimbursement maths.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Mileage').
 
 ````python
 """`Mileage` - trip log with odometer readings and reimbursement maths."""
@@ -4709,7 +5238,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/staff.py`
 
-`Staff` - team directory, workload, timesheet totals and pay. *(120 lines)*
+*120 lines · 1 function*
+
+> `Staff` - team directory, workload, timesheet totals and pay.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Staff').
 
 ````python
 """`Staff` - team directory, workload, timesheet totals and pay."""
@@ -4836,7 +5373,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/inventory.py`
 
-`Inventory` - pet supplies, stock levels, reorder alerts and value. *(99 lines)*
+*99 lines · 1 function*
+
+> `Inventory` - pet supplies, stock levels, reorder alerts and value.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Inventory').
 
 ````python
 """`Inventory` - pet supplies, stock levels, reorder alerts and value."""
@@ -4942,7 +5487,17 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/reminders.py`
 
-`Reminders` - the alert centre plus a custom task list. *(255 lines)*
+*255 lines · 3 functions*
+
+> `Reminders` - the alert centre plus a custom task list.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` | The custom task list that sits underneath the alert panel |
+| `decorate(sheet, fmts, cfg, reg)` | Write the automatic alert panel above the task list |
+| `_cell(col, row)` |  |
+
+**Module constants:** `NAME` ('Reminders'), `ALERT_HEADER_ROW` (6), `TASK_HEADER_ROW` (38), `LAST_COL` (9), `ALERTS` (24 items), `RENEWALS` (2 items).
 
 ````python
 """`Reminders` - the alert centre plus a custom task list."""
@@ -5210,7 +5765,23 @@ The tabs that read the registers: the hidden calculation engine, the dashboard, 
 
 ### `pet_sitting_spreadsheet/sheets/calc.py`
 
-`Calc` - hidden helper sheet. *(213 lines)*
+*213 lines · 1 function*
+
+> `Calc` - hidden helper sheet.
+>
+> Excel has no SORT/FILTER in the 2007-2016 formula set, so the "top 10"
+> tables, the twelve month trend series and the category breakdowns are
+> pre-computed here with plain SUMIFS/COUNTIFS and then pulled into the
+> Dashboard and Reports tabs with LARGE + INDEX/MATCH.
+>
+> Nothing here needs to be touched by the user; the tab is hidden and every
+> cell is a locked formula.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Calc').
 
 ````python
 """
@@ -5430,7 +6001,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `pet_sitting_spreadsheet/sheets/dashboard.py`
 
-`Dashboard` - the one page view of the business. *(375 lines)*
+*375 lines · 2 functions*
+
+> `Dashboard` - the one page view of the business.
+
+| Defines | What it does |
+|---------|--------------|
+| `_period(field_sheet, field)` |  |
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Dashboard'), `LAST_COL` (17), `MONTH_ROWS` (12), `FIRST_CALC_ROW` (5).
 
 ````python
 """`Dashboard` - the one page view of the business."""
@@ -5812,7 +6392,17 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `pet_sitting_spreadsheet/sheets/reports.py`
 
-`Reports` - printable business analytics for any date range. *(380 lines)*
+*380 lines · 3 functions*
+
+> `Reports` - printable business analytics for any date range.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+| `_start_of_year(cfg)` |  |
+| `_end_of_year(cfg)` |  |
+
+**Module constants:** `NAME` ('Reports'), `LAST_COL` (11), `FIRST_CALC_ROW` (5).
 
 ````python
 """`Reports` - printable business analytics for any date range."""
@@ -6199,7 +6789,15 @@ def _end_of_year(cfg: Config) -> _dt.date:
 
 ### `pet_sitting_spreadsheet/sheets/budget.py`
 
-`Budget` - targets, budget vs actual, break-even, forecast and cash flow. *(272 lines)*
+*272 lines · 1 function*
+
+> `Budget` - targets, budget vs actual, break-even, forecast and cash flow.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Budget'), `LAST_COL` (12), `FIRST_CALC_ROW` (5), `DRAW_ROWS` (24).
 
 ````python
 """`Budget` - targets, budget vs actual, break-even, forecast and cash flow."""
@@ -6478,7 +7076,15 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `pet_sitting_spreadsheet/sheets/start_here.py`
 
-`Start Here` - welcome page, navigation menu and setup checklist. *(219 lines)*
+*219 lines · 1 function*
+
+> `Start Here` - welcome page, navigation menu and setup checklist.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Start Here'), `LAST_COL` (9), `TOUR` (25 items), `QUICK_START` (10 items), `CHECKLIST` (12 items).
 
 ````python
 """`Start Here` - welcome page, navigation menu and setup checklist."""
@@ -6704,7 +7310,27 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `pet_sitting_spreadsheet/sheets/printables.py`
 
-The four print-ready tabs: invoice, pet care sheet, visit report, forms. *(751 lines)*
+*751 lines · 10 functions*
+
+> The four print-ready tabs: invoice, pet care sheet, visit report, forms.
+>
+> Each one is driven by a single drop down at the top (which sits outside the
+> print area), so the user picks a record and presses print.
+
+| Defines | What it does |
+|---------|--------------|
+| `_pick(sheet, fmts, label, list_name, define_as, hint, default)` | Drop down selector on row 1 |
+| `_row(sheet, fmts, row, label, formula, style, label_cols, value_cols, value, bold)` | `Label: value` line used all over the print sheets |
+| `_first_invoice(cfg)` |  |
+| `_first_pet(cfg)` |  |
+| `_first_visit(cfg)` |  |
+| `_index(sheet, field, key, key_field, fallback)` | INDEX/MATCH against a register, written in template syntax |
+| `build_invoice(book, fmts, cfg, reg)` |  |
+| `build_care_sheet(book, fmts, cfg, reg)` |  |
+| `build_visit_report(book, fmts, cfg, reg)` |  |
+| `build_forms(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `INVOICE_SHEET` ('Print Invoice'), `CARE_SHEET` ('Print Pet Care'), `VISIT_SHEET` ('Print Visit'), `FORMS_SHEET` ('Print Forms'), `LAST_COL` (7), `FORMS` (10 items), `MEET_ITEMS` (14 items).
 
 ````python
 """The four print-ready tabs: invoice, pet care sheet, visit report, forms.
@@ -7462,7 +8088,15 @@ def build_forms(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `pet_sitting_spreadsheet/sheets/help_tab.py`
 
-`Help` - instructions, formula notes, troubleshooting and version log. *(295 lines)*
+*295 lines · 1 function*
+
+> `Help` - instructions, formula notes, troubleshooting and version log.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Help'), `LAST_COL` (9), `HOW_IT_WORKS` (5 items), `DAILY` (6 items), `TASKS` (14 items), `FORMULA_NOTES` (11 items), `TROUBLESHOOTING` (9 items), `PRIVACY` (5 items), `VERSIONS` (1 items).
 
 ````python
 """`Help` - instructions, formula notes, troubleshooting and version log."""
@@ -7770,7 +8404,26 @@ Not needed to build the workbook - these are the checks that keep it honest. The
 
 ### `tools/validate_workbook.py`
 
-Static checks on a generated workbook. *(287 lines)*
+*287 lines · 3 functions*
+
+> Static checks on a generated workbook.
+>
+> Run it with any Python that has openpyxl installed::
+>
+>     python tools/validate_workbook.py output/test.xlsx
+>
+> It never opens Excel - it parses the XML and reports anything that would
+> break for a buyer: unresolved template tokens, formulas pointing at the
+> wrong sheet, defined names that do not exist, missing sheet protection,
+> formula cells that are not locked, and input cells that are.
+
+| Defines | What it does |
+|---------|--------------|
+| `_colnum(ref)` |  |
+| `check_raw_xml(path)` | Overlapping merges and stray hyperlinks - Excel calls these corrupt |
+| `check(path)` |  |
+
+**Module constants:** `EXPECTED_SHEETS` (27 items), `FUNCTION_RE` (re.compile(...)), `NAME_RE` (re.compile(...)), `KNOWN_FUNCTIONS` ({'IF', 'IFERROR', 'SUM', 'SUMIF', 'SUMIFS', 'COUNT', 'COU...), `MODERN_ONLY` ({'XLOOKUP', 'IFS', 'MAXIFS', 'MINIFS', 'TEXTJOIN', 'CONCA...).
 
 ````python
 """Static checks on a generated workbook.
@@ -8064,7 +8717,24 @@ if __name__ == "__main__":
 
 ### `tools/check_sample_data.py`
 
-Cross-check the example records in a generated workbook. *(171 lines)*
+*171 lines · 3 functions*
+
+> Cross-check the example records in a generated workbook.
+>
+> The demo data has to join up, otherwise the dashboard opens full of zeros.
+> This reads the literal values out of the finished file and makes sure every
+> client, pet, service, staff member, booking and invoice reference points at
+> a record that really exists.
+>
+>     python tools/check_sample_data.py output/test.xlsx
+
+| Defines | What it does |
+|---------|--------------|
+| `column_values(ws, header, header_row)` | Every non-empty literal value under the given header |
+| `column_rows(ws, header, header_row)` | `{row number: value}` for every non-empty literal under a header |
+| `main(path)` |  |
+
+**Module constants:** `HEADER_ROW` (4), `INCIDENT_HEADER_ROW` (17), `TASK_HEADER_ROW` (38).
 
 ````python
 """Cross-check the example records in a generated workbook.
@@ -8242,7 +8912,46 @@ if __name__ == "__main__":
 
 ### `tools/recalc_check.py`
 
-Really calculate every formula in a generated workbook and report any cell that ends up as an Excel error (#REF!, #DIV/0!, #VALUE! ...). *(216 lines)*
+*216 lines · 4 functions*
+
+> Really calculate every formula in a generated workbook and report any
+> cell that ends up as an Excel error (#REF!, #DIV/0!, #VALUE! ...).
+>
+> `validate_workbook.py` reads the file; this one *runs* it.  It loads the
+> workbook into the `formulas` calculation engine, evaluates the whole
+> dependency graph and then looks at the answer in every formula cell, so a
+> formula that parses perfectly but divides by zero on an empty row is still
+> caught.
+>
+>     pip install formulas openpyxl
+>     python tools/recalc_check.py "output/Pet Sitting Business Spreadsheet.xlsx"
+>
+> Notes
+> -----
+> * The engine cannot resolve `OFFSET()` based defined names, so a working
+>   copy of the file is made first with those names flattened to plain
+>   ranges.  The copy is a test artefact - the real workbook keeps its
+>   dynamic names and is never touched.
+> * Only cells that actually hold a formula are judged, so help text that
+>   merely mentions "#N/A" is not mistaken for a broken formula.
+> * The engine is hungry: a full-size 400-row build is around 50,000
+>   formulas and wants several GB of memory.  Check a smaller build
+>   instead - the formulas are identical, there are just fewer rows of
+>   them:
+>
+>       python build_pet_sitting_workbook.py --rows 120 -o /tmp/small.xlsx
+>       python tools/recalc_check.py /tmp/small.xlsx
+>
+>   Pass --force to run it on a full-size file anyway.
+
+| Defines | What it does |
+|---------|--------------|
+| `flatten_dynamic_names(src, dst)` | Save a copy of *src* at *dst* with OFFSET names turned into ranges |
+| `formula_cells(path)` | `{(SHEET NAME upper, coordinate)}` for every cell holding a formula |
+| `cell_text(value)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `BIG` (25000), `ERROR_TEXT` (re.compile(...)), `DYNAMIC_NAME` (re.compile(...)).
 
 ````python
 """Really calculate every formula in a generated workbook and report any
@@ -8465,7 +9174,33 @@ if __name__ == "__main__":
 
 ### `tools/export_source_md.py`
 
-Write every source file of a generator into one markdown document. *(351 lines)*
+*732 lines · 10 functions*
+
+> Write every source file of a generator into one markdown document.
+>
+>     python tools/export_source_md.py                   # -> SOURCE_CODE.md
+>     python tools/export_source_md.py --product social  # -> SOURCE_CODE_SOCIAL.md
+>     python tools/export_source_md.py -o /tmp/src.md
+>
+> Handy when the code has to travel somewhere that is not a git checkout:
+> one file, every module in reading order, each in a fenced block with its
+> real path above it, plus a short description taken from the module's own
+> docstring so the two can never disagree.
+
+| Defines | What it does |
+|---------|--------------|
+| `outline(path)` | `[(kind, name, note)]` for the classes, functions and constants |
+| `describe_value(node)` | A short, human description of a module level constant |
+| `first_sentence(text)` |  |
+| `blurb(path)` | First sentence of the module docstring, as a one line description |
+| `full_docstring(path)` |  |
+| `anchor(heading)` |  |
+| `tab_table(product)` | A row per tab: order, name, kind, module, columns, rows |
+| `data_dictionary(product)` | One table per register: every column, its type and where it comes from |
+| `file_table(sections)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `ROOT` (os.path.dirname(...)), `SHARED_TOOLS` (2 items), `PET_SECTIONS` (5 items), `PET` (9 entries), `SOCIAL_SECTIONS` (7 items), `SOCIAL` (9 entries), `PRODUCTS` (2 entries), `ARCHITECTURE` ('Everything here is plain Python writing a `.xlsx` file t...).
 
 ````python
 """Write every source file of a generator into one markdown document.
@@ -8565,6 +9300,10 @@ PET_SECTIONS = [
 ]
 
 PET = {
+    "package": "pet_sitting_spreadsheet",
+    "builder": "build_pet_sitting_workbook.py",
+    "doc": "README.md",
+    "tabs": 27,
     "title": "Pet Sitting & Dog Walking Business Spreadsheet",
     "subtitle": ("Complete source code of the generator that writes the "
                  "`.xlsx` product."),
@@ -8697,6 +9436,10 @@ SOCIAL_SECTIONS = [
 ]
 
 SOCIAL = {
+    "package": "social_media_spreadsheet",
+    "builder": "build_social_media_workbook.py",
+    "doc": "README_SOCIAL.md",
+    "tabs": 43,
     "title": "Social Media Content Calendar & Analytics Planner",
     "subtitle": ("Complete source code of the generator that writes the "
                  "`.xlsx` product."),
@@ -8739,14 +9482,192 @@ SOCIAL = {
 PRODUCTS = {"pet": PET, "social": SOCIAL}
 
 
-def blurb(path: str) -> str:
-    """First sentence of the module docstring, as a one line description."""
+# ---------------------------------------------------------------------------
+# Chapter 0 - how the generator is put together (same engine for both
+# products, so the prose is written once and filled in per product)
+# ---------------------------------------------------------------------------
+
+ARCHITECTURE = """\
+Everything here is plain Python writing a `.xlsx` file through XlsxWriter.
+There is no template workbook, no copy of an existing file and no manual
+step: the spreadsheet is described in code, and the code is the only
+source of truth for what ends up in a cell.
+
+Two kinds of tab exist.
+
+* A **register** is a data tab — a header row and hundreds of rows under
+  it. Its module exposes `NAME`, a `spec(cfg)` that returns a
+  `SheetSpec` (a list of `Col` objects) and, optionally, a
+  `decorate(sheet, fmts, cfg)` that adds totals or notes underneath the
+  grid. Nothing in a register module writes cells directly.
+* A **page** is a hand-built tab — the dashboards, the reports, the
+  printables, the welcome and help pages. Its module exposes
+  `build(book, fmts, cfg, reg)` and writes with `SheetWriter` helpers:
+  `banner`, `section`, `kpi`, `table_head`, `calc_row`, `note`,
+  `bullets`, `field`, `merge`, `finish`.
+
+### The build pipeline
+
+`{builder}` parses the command line into a `Config`, then
+`{package}.build.build_workbook(path, cfg)` does six things in order:
+
+1. **Open the workbook** and stamp the document properties — title,
+   author, company, keywords and a comment naming the protection
+   password. The author is the same on every generated file.
+2. **Build the `FormatBook`.** Every visual style the product uses is
+   created once, up front: a style (text, date, money, percent, status,
+   link, …) crossed with a mode (`INPUT` cream and unlocked, `CALC` grey
+   and locked, `PLAIN`), plus the page chrome (titles, section bars, KPI
+   tiles, notes) and the conditional formatting palette.
+3. **Register every `SheetSpec` first**, before a single tab is written.
+   This is what lets any sheet refer to any other sheet's columns by
+   name regardless of which tab happens to be written first.
+4. **Write the tabs in `SHEET_ORDER`.** Registers go through
+   `build_register()` — `SheetWriter.grid(spec)` writes widths, formats,
+   headers, formulas, sample rows, drop downs, header comments,
+   conditional formats, the autofilter, frozen panes and the print
+   setup — then the module's `decorate()` runs and the sheet is
+   protected. Pages call their own `build()`.
+5. **Define the live lookup names** (`ContentIDs`, `TeamNames`, …) from
+   the registry. Each is an `OFFSET` range that grows and shrinks with
+   the number of filled rows, so a drop down never shows blanks.
+6. **Hide the `Calc` engine**, activate the first tab and close the file.
+
+### Describing a column
+
+A column is declared once, for one row, with placeholders:
+
+```python
+Col("er", "Engagement rate", 11, "percent",
+    formula='=IFERROR({{engagements}}{{r}}/{{reach}}{{r}},"")',
+    cf=[{{"type": "cell", "criteria": ">=", "value": "=TargetEngagement",
+         "fmt": "good"}}])
+```
+
+`Col` carries the key, the header text, the width, the style, the
+formula template, the data validation, the header comment, the
+conditional formats, whether the column is hidden and which outline
+group it belongs to. `Registry.render()` expands the template per row:
+
+| Token | Becomes |
+|-------|---------|
+| `{{r}}` / `{{r_prev}}` | this row number / the row above |
+| `{{key}}` | the column letter of another column on the same sheet |
+| `{{first}}` / `{{last}}` | the first and last data row of the sheet |
+| `[[Sheet.key]]` | an absolute range on another sheet, e.g. `'Content Calendar'!$G$5:$G$604` |
+| `[[Sheet.key#12]]` | one cell of that column |
+| `[[Sheet.key#]]` | the same row as the formula being written |
+
+Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
+`min_if`, `blank_if`, `safe`, `lookup`, `dynamic_name`, `quote_sheet`.
+
+### The rules every formula obeys
+
+* **Excel 2010 safe.** `SUMIFS`, `COUNTIFS`, `INDEX/MATCH`, `SMALL`,
+  `LARGE`, `RANK`, `EDATE`, `EOMONTH`, `SUMPRODUCT(MAX(...))`. No
+  dynamic arrays, no `XLOOKUP`, no `IFS`, no `AGGREGATE`, nothing that
+  needs Ctrl+Shift+Enter. The file opens in Excel 2010 and later, Google
+  Sheets, LibreOffice and Numbers.
+* **No charts.** The vendored XlsxWriter in this repository cannot write
+  them, so trends are drawn with `add_sparkline`, data bars and
+  three-colour scales — which also survive a Google Sheets import.
+* **Nth-row lookups without array formulas.** Hidden composite key
+  columns (`date + ROW()/100000`) plus `SMALL` and `INDEX/MATCH` answer
+  "the third thing on 14 March" and "the next eight due" with ordinary
+  formulas.
+* **One number, one home.** Nothing is typed into two tabs. Every other
+  appearance of a figure is a formula pointing back at the one place it
+  was entered.
+* **Locked where it matters.** Formula cells are locked, input cells are
+  not, and every sheet is protected with the same password — so the
+  maths cannot be typed over by accident but the cream cells stay open.
+
+### The hidden `Calc` tab
+
+Dashboards do not aggregate the registers directly. A hidden sheet
+pre-computes one row per month, per platform/service, per category and
+per owner, each with its own ranking key, and the visible pages read
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy
+`SUMIFS` work in one place, keeps recalculation predictable, and makes
+every dashboard number traceable to a single cell.
+"""
+
+
+def outline(path: str) -> list:
+    """`[(kind, name, note)]` for the classes, functions and constants."""
     with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
         source = handle.read()
     try:
-        text = ast.get_docstring(ast.parse(source)) or ""
+        tree = ast.parse(source)
     except SyntaxError:                                  # pragma: no cover
-        text = ""
+        return []
+    items = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            args = [a.arg for a in node.args.args]
+            if node.args.vararg:
+                args.append("*" + node.args.vararg.arg)
+            if node.args.kwonlyargs:
+                args.append("*")
+                args += [a.arg for a in node.args.kwonlyargs]
+            if node.args.kwarg:
+                args.append("**" + node.args.kwarg.arg)
+            note = first_sentence(ast.get_docstring(node) or "")
+            items.append(("function", f"{node.name}({', '.join(args)})",
+                          note))
+        elif isinstance(node, ast.ClassDef):
+            bases = []
+            for base in node.bases:
+                try:
+                    bases.append(ast.unparse(base))
+                except Exception:                        # pragma: no cover
+                    pass
+            name = node.name + (f"({', '.join(bases)})" if bases else "")
+            note = first_sentence(ast.get_docstring(node) or "")
+            fields = [n.target.id for n in node.body
+                      if isinstance(n, ast.AnnAssign)
+                      and isinstance(n.target, ast.Name)]
+            if fields and not note:
+                note = "fields: " + ", ".join(fields[:8])
+            items.append(("class", name, note))
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = ([node.target] if isinstance(node, ast.AnnAssign)
+                       else node.targets)
+            for target in targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if not re.match(r"^[A-Z][A-Z0-9_]*$", target.id):
+                    continue
+                items.append(("constant", target.id,
+                              describe_value(node.value)))
+    return items
+
+
+def describe_value(node) -> str:
+    """A short, human description of a module level constant."""
+    if node is None:
+        return ""
+    if isinstance(node, ast.Constant):
+        text = repr(node.value)
+        return text if len(text) < 60 else f"{text[:57]}..."
+    if isinstance(node, (ast.List, ast.Tuple)):
+        return f"{len(node.elts)} items"
+    if isinstance(node, ast.Dict):
+        return f"{len(node.keys)} entries"
+    if isinstance(node, ast.Call):
+        try:
+            name = ast.unparse(node.func)
+        except Exception:                                # pragma: no cover
+            name = "call"
+        return f"{name}(...)"
+    try:
+        text = ast.unparse(node)
+    except Exception:                                    # pragma: no cover
+        return ""
+    return text if len(text) < 60 else f"{text[:57]}..."
+
+
+def first_sentence(text: str) -> str:
     text = " ".join(text.split())
     if not text:
         return ""
@@ -8756,10 +9677,125 @@ def blurb(path: str) -> str:
     return text.strip().rstrip(".")
 
 
+def blurb(path: str) -> str:
+    """First sentence of the module docstring, as a one line description."""
+    with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+        source = handle.read()
+    try:
+        text = ast.get_docstring(ast.parse(source)) or ""
+    except SyntaxError:                                  # pragma: no cover
+        text = ""
+    return first_sentence(text)
+
+
+def full_docstring(path: str) -> str:
+    with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+        source = handle.read()
+    try:
+        return (ast.get_docstring(ast.parse(source)) or "").strip()
+    except SyntaxError:                                  # pragma: no cover
+        return ""
+
+
 def anchor(heading: str) -> str:
     slug = heading.lower()
     slug = re.sub(r"[^\w\s-]", "", slug)
     return re.sub(r"\s+", "-", slug.strip())
+
+
+def tab_table(product: dict) -> list:
+    """A row per tab: order, name, kind, module, columns, rows.
+
+    Imports the product package, so it degrades to nothing if the
+    generator is not importable from where the tool is run.
+    """
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    try:
+        package = __import__(f"{product['package']}.build",
+                             fromlist=["build"])
+        config = __import__(f"{product['package']}.config",
+                            fromlist=["config"])
+    except Exception:                                    # pragma: no cover
+        return []
+    cfg = config.Config()
+    lines = ["| # | Tab | Kind | Written by | Columns | Rows |",
+             "|---|-----|------|------------|--------:|-----:|"]
+    for number, name in enumerate(package.SHEET_ORDER, start=1):
+        module = package.REGISTER_BY_NAME.get(name)
+        if module is not None:
+            spec = module.spec(cfg)
+            # a register is usually a module, but the platform planners
+            # are instances of one shared class
+            where = (getattr(module, "__name__", None)
+                     or type(module).__module__)
+            path = where.replace(".", "/") + ".py"
+            lines.append(f"| {number} | **{name}** | register | "
+                         f"`{path}` | {len(spec.columns)} | {spec.rows} |")
+        else:
+            builder = package.PAGE_BUILDERS.get(name)
+            path = (getattr(builder, "__module__", "")
+                    .replace(".", "/") + ".py")
+            lines.append(f"| {number} | **{name}** | page | `{path}` "
+                         f"| - | - |")
+    return lines
+
+
+def data_dictionary(product: dict) -> list:
+    """One table per register: every column, its type and where it comes
+    from. Generated from the specs themselves, so it cannot drift."""
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    try:
+        package = __import__(f"{product['package']}.build",
+                             fromlist=["build"])
+        config = __import__(f"{product['package']}.config",
+                            fromlist=["config"])
+    except Exception:                                    # pragma: no cover
+        return []
+    cfg = config.Config()
+    lines = []
+    for name in package.SHEET_ORDER:
+        module = package.REGISTER_BY_NAME.get(name)
+        if module is None:
+            continue
+        spec = module.spec(cfg)
+        typed = sum(1 for c in spec.columns if not c.is_formula)
+        lines += [f"#### {spec.name}", ""]
+        if spec.subtitle:
+            lines += [f"{spec.subtitle}", ""]
+        lines += [f"{len(spec.columns)} columns, {spec.rows} rows of "
+                  f"capacity, {typed} of them typed in by hand.", "",
+                  "| Col | Header | Key | Format | Filled by |",
+                  "|-----|--------|-----|--------|-----------|"]
+        for col in spec.columns:
+            source = "formula" if col.is_formula else "you type it"
+            if col.validate:
+                picked = str(col.validate.get("source", "")).lstrip("=")
+                if picked and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", picked):
+                    source = f"drop down `{picked}`"
+                elif not col.is_formula:
+                    source = "you type it (checked)"
+            if col.hidden:
+                source += ", hidden"
+            lines.append(f"| {spec.letter(col.key)} | {col.header} | "
+                         f"`{col.key}` | {col.style} | {source} |")
+        lines.append("")
+    return lines
+
+
+def file_table(sections: list) -> list:
+    lines = ["| File | Lines | What it is |", "|------|------:|------------|"]
+    for _heading, _intro, paths in sections:
+        for path in paths:
+            with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+                count = len(handle.read().splitlines())
+            note = blurb(path) or ""
+            if len(note) > 110:
+                note = note[:107].rsplit(" ", 1)[0] + "..."
+            lines.append(f"| [`{path}`](#{anchor(path)}) | {count:,} | "
+                         f"{note} |")
+    return lines
 
 
 def main(argv=None) -> int:
@@ -8768,21 +9804,51 @@ def main(argv=None) -> int:
                         default="pet",
                         help="which generator to export (default: pet)")
     parser.add_argument("-o", "--output", default=None)
+    parser.add_argument("--plain", action="store_true",
+                        help="just the code, without the architecture "
+                             "chapter and the per file outlines")
     args = parser.parse_args(argv)
 
     product = PRODUCTS[args.product]
     sections = product["sections"]
+    detailed = not args.plain
 
     lines = [f"# {product['title']} — source code", "",
              product["subtitle"], ""]
     lines += product["intro"]
     lines += ["", "---", "", "## Contents", ""]
 
+    if detailed:
+        lines += ["* [0. How it is put together](#0-how-it-is-put-together)",
+                  "  * [The build pipeline](#the-build-pipeline)",
+                  "  * [Describing a column](#describing-a-column)",
+                  "  * [The rules every formula obeys]"
+                  "(#the-rules-every-formula-obeys)",
+                  "  * [The hidden `Calc` tab](#the-hidden-calc-tab)",
+                  "  * [Every tab at a glance](#every-tab-at-a-glance)",
+                  "  * [Every file at a glance](#every-file-at-a-glance)"]
     for heading, _intro, paths in sections:
         lines.append(f"* [{heading}](#{anchor(heading)})")
         for path in paths:
             lines.append(f"  * [`{path}`](#{anchor(path)})")
+    if detailed:
+        lines.append("* [Appendix A. Data dictionary]"
+                     "(#appendix-a-data-dictionary)")
     lines += ["", "---", ""]
+
+    if detailed:
+        lines += ["## 0. How it is put together", ""]
+        lines += [ARCHITECTURE.format(builder=product["builder"],
+                                      package=product["package"]), ""]
+        tabs = tab_table(product)
+        if tabs:
+            lines += ["### Every tab at a glance", "",
+                      f"{product['tabs']} tabs in the order they appear in "
+                      f"the finished workbook. \"Rows\" is the capacity of "
+                      f"a register at the default `--rows` setting.", ""]
+            lines += tabs + [""]
+        lines += ["### Every file at a glance", ""]
+        lines += file_table(sections) + ["", "---", ""]
 
     total = 0
     for heading, intro, paths in sections:
@@ -8793,18 +9859,68 @@ def main(argv=None) -> int:
                 code = handle.read().rstrip("\n")
             count = len(code.splitlines())
             total += count
-            note = blurb(path)
             lines.append(f"### `{path}`")
             lines.append("")
-            if note:
-                lines.append(f"{note}. *({count} lines)*")
+            if detailed:
+                items = outline(path)
+                classes = sum(1 for kind, _n, _d in items
+                              if kind == "class")
+                functions = sum(1 for kind, _n, _d in items
+                                if kind == "function")
+                stats = [f"{count:,} lines"]
+                if classes:
+                    stats.append(f"{classes} class"
+                                 f"{'es' if classes > 1 else ''}")
+                if functions:
+                    stats.append(f"{functions} function"
+                                 f"{'s' if functions > 1 else ''}")
+                lines += [f"*{' · '.join(stats)}*", ""]
+                doc = full_docstring(path)
+                if doc:
+                    lines += ["> " + line if line else ">"
+                              for line in doc.splitlines()]
+                    lines.append("")
+                named = [item for item in items if item[0] != "constant"]
+                constants = [item for item in items if item[0] == "constant"]
+                if named:
+                    lines += ["| Defines | What it does |",
+                              "|---------|--------------|"]
+                    for kind, name, note in named:
+                        tag = "class " if kind == "class" else ""
+                        lines.append(f"| `{tag}{name}` | {note} |")
+                    lines.append("")
+                if constants:
+                    text = ", ".join(f"`{name}` ({note})" if note
+                                     else f"`{name}`"
+                                     for _k, name, note in constants[:14])
+                    more = (f" and {len(constants) - 14} more"
+                            if len(constants) > 14 else "")
+                    lines += [f"**Module constants:** {text}{more}.", ""]
             else:
-                lines.append(f"*({count} lines)*")
+                note = blurb(path)
+                if note:
+                    lines.append(f"{note}. *({count} lines)*")
+                else:
+                    lines.append(f"*({count} lines)*")
+                lines.append("")
             # four backticks, so a fence inside a docstring cannot
             # close the block early
-            lines += ["", "````python", code, "````", ""]
+            lines += ["````python", code, "````", ""]
         lines.append("---")
         lines.append("")
+
+    if detailed:
+        dictionary = data_dictionary(product)
+        if dictionary:
+            lines += ["## Appendix A. Data dictionary", "",
+                      "Every column of every register tab, straight from "
+                      "the specs that build them: the Excel column letter, "
+                      "the header a buyer sees, the key formulas use, the "
+                      "number format and whether the cell is typed in, "
+                      "chosen from a drop down or calculated. Pages "
+                      "(dashboards, reports, printables) are not listed - "
+                      "they have no fixed grid.", ""]
+            lines += dictionary + ["---", ""]
 
     lines += [f"*{total:,} lines of Python in "
               f"{sum(len(p) for _h, _i, p in sections)} files.*", ""]
@@ -8823,7 +9939,28 @@ if __name__ == "__main__":
 
 ### `tools/make_download_zip.py`
 
-Pack a generator into a single zip people can download and run. *(182 lines)*
+*182 lines · 2 functions*
+
+> Pack a generator into a single zip people can download and run.
+>
+>     python tools/make_download_zip.py
+>     python tools/make_download_zip.py --product social
+>
+> Writes `download/<product>-source.zip` containing the generator, the
+> quality tools, the documentation and a `requirements.txt`, all under one
+> folder so it unpacks tidily.
+>
+> The vendored copy of XlsxWriter in this repository is deliberately left
+> out: the zip is meant to be unpacked anywhere and run against a normal
+> `pip install XlsxWriter`.  Timestamps are fixed so rebuilding the zip
+> without changing any source produces exactly the same bytes.
+
+| Defines | What it does |
+|---------|--------------|
+| `gather(product)` | `[(archive name, text)]` for everything that goes in the zip |
+| `main(argv)` |  |
+
+**Module constants:** `ROOT` (os.path.dirname(...)), `STAMP` (6 items), `SHARED_TOOLS` (3 items), `REQUIREMENTS` ('# The generator needs one package.\nXlsxWriter>=3.0\n\n#...), `PET_HOW_TO_RUN` ('Pet Sitting & Dog Walking Business Spreadsheet\n========...), `SOCIAL_HOW_TO_RUN` ('Social Media Content Calendar & Analytics Planner\n=====...), `PRODUCTS` (2 entries).
 
 ````python
 """Pack a generator into a single zip people can download and run.
@@ -9012,4 +10149,607 @@ if __name__ == "__main__":
 
 ---
 
-*8,606 lines of Python in 42 files.*
+## Appendix A. Data dictionary
+
+Every column of every register tab, straight from the specs that build them: the Excel column letter, the header a buyer sees, the key formulas use, the number format and whether the cell is typed in, chosen from a drop down or calculated. Pages (dashboards, reports, printables) are not listed - they have no fixed grid.
+
+#### Services
+
+Add every service you sell. Bookings pull the billing unit, rate, additional pet fee and surcharges straight from this table.
+
+20 columns, 50 rows of capacity, 13 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Service name | `name` | text | you type it |
+| C | Category | `category` | text | drop down `ServiceCategoryList` |
+| D | What is included | `description` | wrap | you type it |
+| E | Billing unit | `unit` | text | drop down `BillingUnitList` |
+| F | Standard length (mins) | `duration` | int | you type it (checked) |
+| G | Base rate | `rate` | money | you type it (checked) |
+| H | Additional pet fee | `extra_pet` | money | you type it (checked) |
+| I | Holiday surcharge | `hol_pct` | percent | you type it (checked) |
+| J | Weekend surcharge | `wkd_pct` | percent | you type it (checked) |
+| K | Travel fee applies? | `travel` | flag | you type it (checked) |
+| L | Staff cost per unit | `staff_cost` | money | you type it (checked) |
+| M | Gross profit per unit | `profit` | money | formula |
+| N | Margin % | `margin` | percent | formula |
+| O | Times booked | `times_booked` | int | formula |
+| P | Revenue to date | `revenue` | money | formula |
+| Q | Average value | `avg_value` | money | formula |
+| R | Estimated profit | `est_profit` | money | formula |
+| S | Active? | `active` | flag | you type it (checked) |
+| T | Notes | `notes` | wrap | you type it |
+
+#### Clients
+
+One row per client. Grey columns calculate pets, visits, lifetime revenue, outstanding balances and follow-up actions for you.
+
+38 columns, 250 rows of capacity, 23 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Client name | `name` | text | you type it |
+| C | Phone | `phone` | text | you type it |
+| D | Email | `email` | text | you type it |
+| E | Street address | `address` | text | you type it |
+| F | City / suburb | `city` | text | you type it |
+| G | Post code | `postcode` | text | you type it |
+| H | Emergency contact | `emergency_name` | text | you type it |
+| I | Emergency phone | `emergency_phone` | text | you type it |
+| J | Preferred contact | `contact_method` | text | drop down `ContactMethodList` |
+| K | Referral source | `referral` | text | drop down `ReferralSourceList` |
+| L | Registered on | `reg_date` | date | you type it (checked) |
+| M | Status | `status` | status | drop down `ClientStatusList` |
+| N | Key / access | `key_status` | text | drop down `KeyStatusList` |
+| O | Key tag / ref | `key_tag` | text | you type it |
+| P | Key returned on | `key_returned` | date | you type it (checked) |
+| Q | Home access instructions | `access_notes` | wrap | you type it |
+| R | Alarm / gate code | `access_code` | text | you type it |
+| S | Contract status | `contract` | status | drop down `ContractStatusList` |
+| T | Agreement signed | `agreement_date` | date | you type it (checked) |
+| U | Emergency vet consent | `vet_consent` | flag | you type it (checked) |
+| V | Vet spend authority | `vet_limit` | money | you type it (checked) |
+| W | Preferences & special instructions | `preferences` | wrap | you type it |
+| X | Notes & communication history | `notes` | wrap | you type it |
+| Y | Pets | `pets` | int | formula |
+| Z | Bookings | `bookings` | int | formula |
+| AA | Visits done | `visits` | int | formula |
+| AB | Last service | `last_service` | date | formula |
+| AC | Days since | `days_since` | int | formula |
+| AD | Next booking | `next_booking` | date | formula |
+| AE | Lifetime revenue | `revenue` | money | formula |
+| AF | Invoiced to date | `invoiced` | money | formula |
+| AG | Outstanding | `outstanding` | money | formula |
+| AH | Average booking | `avg_booking` | money | formula |
+| AI | Loyalty status | `loyalty` | status | formula |
+| AJ | Duplicate check | `dup_check` | status | formula |
+| AK | Missing information | `data_check` | status | formula |
+| AL | Action needed | `alert` | status | formula |
+
+#### Pets
+
+Everything a sitter needs before they walk through the door: routine, medical, vet, vaccination status and safety warnings.
+
+46 columns, 250 rows of capacity, 37 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Pet name | `name` | text | you type it |
+| C | Owner (client) | `owner` | text | drop down `ClientNames` |
+| D | Pet reference | `label` | text | formula |
+| E | Client ID | `client_id` | text | formula |
+| F | Pet type | `type` | text | drop down `PetTypeList` |
+| G | Breed | `breed` | text | you type it |
+| H | Date of birth | `dob` | date | you type it (checked) |
+| I | Age (yrs) | `age` | number1 | formula |
+| J | Gender | `gender` | text | drop down `PetGenderList` |
+| K | Weight (kg) | `weight` | number1 | you type it (checked) |
+| L | Colour & markings | `colour` | text | you type it |
+| M | Photo link | `photo` | text | you type it |
+| N | Microchip number | `microchip` | text | you type it |
+| O | Temperament | `temperament` | text | drop down `TemperamentList` |
+| P | Behaviour issues | `behaviour` | wrap | you type it |
+| Q | Allergies | `allergies` | wrap | you type it |
+| R | Medical conditions / special needs | `medical` | wrap | you type it |
+| S | Veterinarian | `vet_name` | text | you type it |
+| T | Vet phone | `vet_phone` | text | you type it |
+| U | Emergency clinic | `emerg_clinic` | text | you type it |
+| V | Emergency clinic phone | `emerg_phone` | text | you type it |
+| W | Vaccinated on | `vacc_date` | date | you type it (checked) |
+| X | Vaccination expires | `vacc_expiry` | date | you type it (checked) |
+| Y | Vaccination status | `vacc_status` | status | formula |
+| Z | Pet insurance | `insurer` | text | you type it |
+| AA | Policy number | `policy` | text | you type it |
+| AB | Insurance renewal | `insurance_expiry` | date | you type it (checked) |
+| AC | Feeding instructions | `feeding` | wrap | you type it |
+| AD | Food type | `food` | text | you type it |
+| AE | Portion size | `portion` | text | you type it |
+| AF | Feeding schedule | `feed_schedule` | text | you type it |
+| AG | Medication | `medication` | text | you type it |
+| AH | Dosage & instructions | `dosage` | wrap | you type it |
+| AI | Medication schedule | `med_schedule` | text | you type it |
+| AJ | Walking & exercise preferences | `walking` | wrap | you type it |
+| AK | Potty / litter routine | `potty` | wrap | you type it |
+| AL | Grooming requirements | `grooming` | wrap | you type it |
+| AM | Favourite toys, treats & games | `favourites` | wrap | you type it |
+| AN | Risk flag | `risk` | status | drop down `RiskFlagList` |
+| AO | Handling instructions | `handling` | wrap | you type it |
+| AP | Safety warnings | `warnings` | wrap | you type it |
+| AQ | Visits | `visits` | int | formula |
+| AR | Last visit | `last_visit` | date | formula |
+| AS | Med records | `meds_logged` | int | formula |
+| AT | Alerts | `alert` | status | formula |
+
+#### Bookings
+
+Every booking, priced automatically from the Services tab with holiday, weekend, extra pet, travel and last-minute rules applied.
+
+52 columns, 400 rows of capacity, 23 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Requested on | `request_date` | date | you type it (checked) |
+| C | Client | `client` | text | drop down `ClientNames` |
+| D | Client ID | `client_id` | text | formula |
+| E | Pet | `pet` | text | drop down `PetLabels` |
+| F | Additional pets | `extra_pets` | text | you type it |
+| G | No. of pets | `pet_count` | int | you type it (checked) |
+| H | Service | `service` | text | drop down `ServiceNames` |
+| I | Booking date | `date` | date | you type it (checked) |
+| J | Day | `day` | flag | formula |
+| K | Start | `start` | time | you type it |
+| L | End | `end` | time | you type it |
+| M | Hours | `duration` | number | formula |
+| N | Qty / nights | `qty` | number | you type it (checked) |
+| O | Billing unit | `unit` | text | formula |
+| P | Rate | `rate` | money | formula |
+| Q | Extra pet rate | `pet_rate` | money | formula, hidden |
+| R | Holiday % | `hol_pct` | percent | formula, hidden |
+| S | Weekend % | `wkd_pct` | percent | formula, hidden |
+| T | Travel billable | `travel_flag` | flag | formula, hidden |
+| U | Base charge | `base` | money | formula |
+| V | Extra pet fee | `extra_pet_fee` | money | formula |
+| W | Holiday? | `holiday` | flag | formula |
+| X | Weekend? | `weekend` | flag | formula |
+| Y | Surcharges | `surcharge` | money | formula |
+| Z | Travel distance | `distance` | number1 | you type it (checked) |
+| AA | Travel fee | `travel_fee` | money | formula |
+| AB | Travel allowance (min) | `travel_time` | int | formula |
+| AC | Last-minute fee | `rush_fee` | money | formula |
+| AD | Discount type | `discount_type` | text | drop down `DiscountTypeList` |
+| AE | Discount % | `discount_pct` | percent | you type it (checked) |
+| AF | Discount | `discount` | money | formula |
+| AG | Price override | `override` | money | you type it (checked) |
+| AH | Override reason | `override_note` | text | you type it |
+| AI | Subtotal | `subtotal` | money | formula |
+| AJ | Tax | `tax` | money | formula |
+| AK | Booking total | `total` | money | formula |
+| AL | Assigned to | `staff` | text | drop down `StaffNames` |
+| AM | Status | `status` | status | drop down `BookingStatusList` |
+| AN | Confirmed to client | `confirm_sent` | flag | you type it (checked) |
+| AO | Reminder sent | `reminder_sent` | flag | you type it (checked) |
+| AP | Repeats | `recurring` | text | drop down `RecurringList` |
+| AQ | Next booking due | `next_due` | date | formula |
+| AR | Schedule check | `conflict` | status | formula |
+| AS | Visit logged | `visit_logged` | flag | formula |
+| AT | Invoice | `invoice_no` | text | formula |
+| AU | Payment status | `paid_status` | status | formula |
+| AV | Cancellation reason | `cancel_reason` | text | drop down `CancelReasonList` |
+| AW | Rescheduled from | `resched_from` | date | you type it (checked) |
+| AX | Notes & special requests | `notes` | wrap | you type it |
+| AY | Month | `month` | text | formula |
+| AZ | Action needed | `alert` | status | formula |
+
+#### Visit Log
+
+Proof of service for every walk, drop-in and overnight: times, care given, mood, health notes and client updates.
+
+36 columns, 400 rows of capacity, 24 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Booking ID | `booking` | text | drop down `BookingIDs` |
+| C | Visit date | `date` | date | you type it (checked) |
+| D | Client | `client` | text | formula |
+| E | Pet | `pet` | text | formula |
+| F | Service | `service` | text | formula |
+| G | Carer | `staff` | text | drop down `StaffNames` |
+| H | Scheduled | `sched_start` | time | formula |
+| I | Arrived | `arrive` | time | you type it |
+| J | Departed | `depart` | time | you type it |
+| K | Minutes on site | `duration` | int | formula |
+| L | On time? | `punctual` | status | formula |
+| M | Walk start | `walk_start` | time | you type it |
+| N | Walk end | `walk_end` | time | you type it |
+| O | Walk minutes | `walk_mins` | int | formula |
+| P | Distance walked | `walk_distance` | number1 | you type it (checked) |
+| Q | Fed | `fed` | flag | drop down `YesNoNAList` |
+| R | Fresh water | `water` | flag | drop down `YesNoNAList` |
+| S | Medication given | `meds` | flag | drop down `YesNoNAList` |
+| T | Potty / litter | `potty` | text | drop down `PottyList` |
+| U | Exercise & play | `play` | text | you type it |
+| V | Grooming / cleaning | `grooming` | text | you type it |
+| W | Mood & behaviour | `mood` | text | drop down `MoodList` |
+| X | Appetite | `appetite` | text | drop down `AppetiteList` |
+| Y | Health observations | `health` | wrap | you type it |
+| Z | Incident? | `incident` | flag | you type it (checked) |
+| AA | Incident ref | `incident_ref` | text | you type it |
+| AB | Photos / report link | `photos` | text | you type it |
+| AC | Client updated | `update_sent` | flag | you type it (checked) |
+| AD | Care checklist done | `checklist` | flag | you type it (checked) |
+| AE | Visit status | `status` | status | drop down `VisitStatusList` |
+| AF | Visit notes | `notes` | wrap | you type it |
+| AG | Month | `month` | text | formula |
+| AH | Line key | `line_key` | text | formula, hidden |
+| AI | Pet key | `pet_key` | text | formula, hidden |
+| AJ | Action needed | `alert` | status | formula |
+
+#### Health Log
+
+A dated record of every dose given, vaccination, vet visit and health observation - your proof of care.
+
+22 columns, 200 rows of capacity, 16 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Date | `date` | date | you type it (checked) |
+| C | Time | `time` | time | you type it |
+| D | Pet | `pet` | text | drop down `PetLabels` |
+| E | Client | `client` | text | formula |
+| F | Record type | `type` | text | drop down `HealthRecordTypeList` |
+| G | Medication / treatment | `item` | text | you type it |
+| H | Dosage & instructions | `dosage` | wrap | you type it |
+| I | Scheduled | `sched_time` | time | you type it |
+| J | Given at | `given_time` | time | you type it |
+| K | Given by | `staff` | text | drop down `StaffNames` |
+| L | Status | `status` | status | drop down `MedStatusList` |
+| M | Supply left | `supply` | number1 | you type it (checked) |
+| N | Refill due | `refill_due` | date | you type it (checked) |
+| O | Refill alert | `refill_alert` | status | formula |
+| P | Vet appointment | `vet_appt` | date | you type it (checked) |
+| Q | Appointment alert | `appt_alert` | status | formula |
+| R | Cost | `cost` | money | you type it (checked) |
+| S | Owner notified | `notified` | flag | you type it (checked) |
+| T | Notes | `notes` | wrap | you type it |
+| U | Month | `month` | text | formula |
+| V | Action needed | `alert` | status | formula |
+
+#### Incidents
+
+Emergency numbers at the top, a dated incident report register below. Print a row straight from this tab if an owner or insurer asks for it.
+
+23 columns, 100 rows of capacity, 20 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Date | `date` | date | you type it (checked) |
+| C | Time | `time` | time | you type it |
+| D | Client | `client` | text | drop down `ClientNames` |
+| E | Pet | `pet` | text | drop down `PetLabels` |
+| F | Reported by | `staff` | text | drop down `StaffNames` |
+| G | Booking / visit ref | `ref` | text | you type it |
+| H | Incident type | `type` | text | drop down `IncidentTypeList` |
+| I | Severity | `severity` | status | drop down `SeverityList` |
+| J | What happened | `description` | wrap | you type it |
+| K | Action taken | `action` | wrap | you type it |
+| L | Vet contacted | `vet_contacted` | flag | you type it (checked) |
+| M | Clinic attended | `clinic` | text | you type it |
+| N | Owner notified | `owner_notified` | flag | you type it (checked) |
+| O | Notified when | `notified_at` | text | you type it |
+| P | Follow-up needed | `follow_up` | flag | you type it (checked) |
+| Q | Follow-up due | `follow_due` | date | you type it (checked) |
+| R | Status | `status` | status | drop down `IncidentStatusList` |
+| S | Cost incurred | `cost` | money | you type it (checked) |
+| T | Insurance claim | `claim` | flag | you type it (checked) |
+| U | Days open | `days_open` | text | formula |
+| V | Notes & outcome | `notes` | wrap | you type it |
+| W | Action needed | `alert` | status | formula |
+
+#### Messages
+
+Every confirmation, reminder, update, review and complaint in one searchable history.
+
+20 columns, 200 rows of capacity, 16 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Date | `date` | date | you type it (checked) |
+| C | Client | `client` | text | drop down `ClientNames` |
+| D | Message type | `type` | text | drop down `MessageTypeList` |
+| E | Channel | `channel` | text | drop down `ChannelList` |
+| F | Direction | `direction` | text | drop down `DirectionList` |
+| G | Summary | `summary` | wrap | you type it |
+| H | Reply received | `response` | flag | you type it (checked) |
+| I | Satisfaction (1-5) | `rating` | rating | you type it (checked) |
+| J | Feedback / review | `feedback` | wrap | you type it |
+| K | Complaint? | `complaint` | flag | you type it (checked) |
+| L | Issue raised | `issue` | wrap | you type it |
+| M | Resolution status | `resolution` | status | drop down `ResolutionList` |
+| N | Resolved on | `resolved_date` | date | you type it (checked) |
+| O | Follow-up due | `follow_due` | date | you type it (checked) |
+| P | Follow-up done | `follow_done` | flag | you type it (checked) |
+| Q | Days open | `days_open` | int | formula |
+| R | Notes | `notes` | wrap | you type it |
+| S | Month | `month` | text | formula |
+| T | Action needed | `alert` | status | formula |
+
+#### Invoices
+
+Automatic numbering, due dates, tax, balances, ageing buckets and overdue alerts - all from the booking you link.
+
+30 columns, 300 rows of capacity, 12 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | Invoice no. | `invoice_no` | id | formula |
+| B | Invoice date | `date` | date | you type it (checked) |
+| C | Due date | `due` | date | formula |
+| D | Client | `client` | text | drop down `ClientNames` |
+| E | Booking ref | `booking` | text | drop down `BookingIDs` |
+| F | Booking total | `booking_total` | money | formula |
+| G | Description of service | `description` | wrap | you type it |
+| H | Qty | `qty` | number | you type it (checked) |
+| I | Rate | `rate` | money | you type it (checked) |
+| J | Line amount | `line_total` | money | formula |
+| K | Additional fees | `fees` | money | you type it (checked) |
+| L | Discount | `discount` | money | you type it (checked) |
+| M | Subtotal | `subtotal` | money | formula |
+| N | Tax | `tax` | money | formula |
+| O | Invoice total | `total` | money | formula |
+| P | Deposit received | `deposit` | money | formula |
+| Q | Amount paid | `paid` | money | formula |
+| R | Refunded | `refunded` | money | formula |
+| S | Balance due | `balance` | money | formula |
+| T | Invoice status | `status` | status | drop down `InvoiceStatusList` |
+| U | Payment status | `pay_status` | status | formula |
+| V | Days overdue | `days_overdue` | int | formula |
+| W | Ageing bucket | `aging` | status | formula |
+| X | Suggested late fee | `late_fee` | money | formula |
+| Y | Sent on | `sent_date` | date | you type it (checked) |
+| Z | Reminder sent | `reminder_sent` | flag | you type it (checked) |
+| AA | Number check | `dup_check` | status | formula |
+| AB | Invoice notes | `notes` | wrap | you type it |
+| AC | Month | `month` | text | formula |
+| AD | Action needed | `alert` | status | formula |
+
+#### Payments
+
+Every cash, card, transfer, wallet and deposit payment, with tips, refunds and bank reconciliation.
+
+20 columns, 300 rows of capacity, 13 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Payment date | `date` | date | you type it (checked) |
+| C | Client | `client` | text | drop down `ClientNames` |
+| D | Invoice no. | `invoice_no` | text | drop down `InvoiceNos` |
+| E | Amount applied | `amount` | money | you type it (checked) |
+| F | Payment method | `method` | text | drop down `PaymentMethodList` |
+| G | Reference | `reference` | text | you type it |
+| H | Tip / gratuity | `tip` | money | you type it (checked) |
+| I | Late fee collected | `late_fee` | money | you type it (checked) |
+| J | Refund given | `refund` | money | you type it (checked) |
+| K | Applied to invoice | `net` | money | formula |
+| L | Total cash in | `received` | money | formula |
+| M | Deposit? | `deposit` | flag | you type it (checked) |
+| N | Cleared / confirmed | `confirmed` | flag | you type it (checked) |
+| O | Reconciled to bank | `reconciled` | flag | you type it (checked) |
+| P | Invoice total | `inv_total` | money | formula |
+| Q | Invoice balance | `inv_balance` | money | formula |
+| R | Notes | `notes` | wrap | you type it |
+| S | Month | `month` | text | formula |
+| T | Action needed | `alert` | status | formula |
+
+#### Expenses
+
+Fuel, supplies, wages, insurance, software and every other cost - split into tax, net and claimable amounts.
+
+21 columns, 300 rows of capacity, 14 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Date | `date` | date | you type it (checked) |
+| C | Category | `category` | text | drop down `ExpenseCategoryList` |
+| D | Description | `description` | wrap | you type it |
+| E | Supplier / vendor | `supplier` | text | you type it |
+| F | Amount paid | `amount` | money | you type it (checked) |
+| G | Tax included | `tax` | money | formula |
+| H | Net cost | `net` | money | formula |
+| I | Paid by | `method` | text | drop down `PaymentMethodList` |
+| J | Business / personal | `type` | status | drop down `BusinessPersonalList` |
+| K | Business use % | `deductible` | percent | you type it (checked) |
+| L | Claimable amount | `claim` | money | formula |
+| M | Receipt link / ref | `receipt` | text | you type it |
+| N | Recurring | `recurring` | text | drop down `RecurringExpenseList` |
+| O | Next due | `next_due` | date | formula |
+| P | Approval | `approval` | status | drop down `ExpenseApprovalList` |
+| Q | Related client / booking | `related` | text | you type it |
+| R | Staff member | `staff` | text | drop down `StaffNames` |
+| S | Notes | `notes` | wrap | you type it |
+| T | Month | `month` | text | formula |
+| U | Action needed | `alert` | status | formula |
+
+#### Mileage
+
+Odometer in, odometer out: km travelled, round trips, reimbursement, parking and tolls - ready for your tax return.
+
+24 columns, 300 rows of capacity, 15 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Trip date | `date` | date | you type it (checked) |
+| C | Driver | `staff` | text | drop down `StaffNames` |
+| D | Client / booking | `client` | text | drop down `ClientNames` |
+| E | Purpose | `purpose` | text | drop down `TripPurposeList` |
+| F | From | `start_loc` | text | you type it |
+| G | To | `end_loc` | text | you type it |
+| H | Odometer start | `start_odo` | number1 | you type it (checked) |
+| I | Odometer end | `end_odo` | number1 | you type it (checked) |
+| J | Manual km | `manual_km` | number1 | you type it (checked) |
+| K | Trip km | `trip_km` | number1 | formula |
+| L | Round trip? | `round_trip` | flag | you type it (checked) |
+| M | Total km | `total_km` | number1 | formula |
+| N | Classification | `business` | status | formula |
+| O | Rate | `rate` | money | formula |
+| P | Mileage claim | `reimbursement` | money | formula |
+| Q | Fuel cost | `fuel` | money | you type it (checked) |
+| R | Parking | `parking` | money | you type it (checked) |
+| S | Tolls | `tolls` | money | you type it (checked) |
+| T | Travel time (min) | `travel_mins` | int | you type it (checked) |
+| U | Total claimable | `claimable` | money | formula |
+| V | Notes | `notes` | wrap | you type it |
+| W | Month | `month` | text | formula |
+| X | Check | `alert` | status | formula |
+
+#### Staff
+
+Who works for you, when they are available, what they have delivered and what they are owed.
+
+28 columns, 40 rows of capacity, 17 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Name | `name` | text | you type it |
+| C | Phone | `phone` | text | you type it |
+| D | Email | `email` | text | you type it |
+| E | Role | `role` | text | drop down `StaffRoleList` |
+| F | Employment type | `employment` | text | drop down `EmploymentTypeList` |
+| G | Started on | `start_date` | date | you type it (checked) |
+| H | Status | `status` | status | drop down `StaffStatusList` |
+| I | Availability | `availability` | text | you type it |
+| J | Regular days off | `days_off` | text | you type it |
+| K | Pay type | `pay_type` | text | drop down `PayTypeList` |
+| L | Pay rate | `pay_rate` | money | you type it (checked) |
+| M | Certifications | `certs` | wrap | you type it |
+| N | Certificate expires | `cert_expiry` | date | you type it (checked) |
+| O | Certificate status | `cert_alert` | status | formula |
+| P | Background check | `check_date` | date | you type it (checked) |
+| Q | Emergency contact | `emergency` | text | you type it |
+| R | Leave & absence | `leave` | wrap | you type it |
+| S | Bookings assigned | `bookings` | int | formula |
+| T | Visits completed | `visits` | int | formula |
+| U | Hours worked | `hours` | number | formula |
+| V | Km driven | `distance` | number1 | formula |
+| W | Revenue delivered | `revenue` | money | formula |
+| X | Pay due | `wages` | money | formula |
+| Y | Revenue per hour | `rev_per_hour` | money | formula |
+| Z | Completion rate | `completion` | percent | formula |
+| AA | Notes | `notes` | wrap | you type it |
+| AB | Action needed | `alert` | status | formula |
+
+#### Inventory
+
+Treats, waste bags, cleaning kit, first aid and equipment - with low stock and expiry alerts.
+
+19 columns, 120 rows of capacity, 13 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Item | `item` | text | you type it |
+| C | Category | `category` | text | drop down `InventoryCategoryList` |
+| D | Supplier | `supplier` | text | you type it |
+| E | Unit | `unit` | text | you type it |
+| F | Unit cost | `unit_cost` | money | you type it (checked) |
+| G | In stock | `qty` | number1 | you type it (checked) |
+| H | Minimum level | `min_qty` | number1 | you type it (checked) |
+| I | Reorder qty | `reorder` | number1 | you type it (checked) |
+| J | Stock value | `value` | money | formula |
+| K | Stock status | `stock_status` | status | formula |
+| L | Last purchased | `last_purchase` | date | you type it (checked) |
+| M | Qty last bought | `qty_purchased` | number1 | you type it (checked) |
+| N | Last purchase cost | `purchase_cost` | money | formula |
+| O | Expiry date | `expiry` | date | you type it (checked) |
+| P | Expiry status | `expiry_alert` | status | formula |
+| Q | Used this month | `used_month` | number1 | you type it (checked) |
+| R | Notes | `notes` | wrap | you type it |
+| S | Action needed | `alert` | status | formula |
+
+#### Reminders
+
+Everything the workbook thinks you should do today, plus room for your own reminders.
+
+10 columns, 40 rows of capacity, 7 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Task | `task` | text | you type it |
+| C | Category | `category` | text | you type it |
+| D | Due date | `due` | date | you type it (checked) |
+| E | Owner | `owner` | text | drop down `StaffNames` |
+| F | Priority | `priority` | status | drop down `PriorityList` |
+| G | Status | `status` | status | drop down `TaskStatusList` |
+| H | Days left | `days_left` | int | formula |
+| I | Status check | `flag` | status | formula |
+| J | Notes | `notes` | wrap | you type it |
+
+#### Calc
+
+Helper tables for the dashboard and reports. This tab is hidden by default - unhide it only if you want to audit the maths.
+
+44 columns, 250 rows of capacity, 0 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | Client | `c_name` | text | formula |
+| B | Revenue (dashboard period) | `c_rev_p` | money | formula |
+| C | Rank key (period) | `c_key_p` | number | formula |
+| D | Revenue (report range) | `c_rev_r` | money | formula |
+| E | Rank key (range) | `c_key_r` | number | formula |
+| F | Outstanding | `c_out` | money | formula |
+| G | Outstanding key | `c_out_key` | number | formula |
+| H | Bookings (range) | `c_bookings_r` | int | formula |
+| I | Service | `s_name` | text | formula |
+| J | Service revenue (period) | `s_rev_p` | money | formula |
+| K | Service bookings (period) | `s_count_p` | int | formula |
+| L | Service revenue (range) | `s_rev_r` | money | formula |
+| M | Service bookings (range) | `s_count_r` | int | formula |
+| N | Service cost (range) | `s_cost_r` | money | formula |
+| O | Service profit (range) | `s_profit_r` | money | formula |
+| P | Expense category | `e_cat` | text | formula |
+| Q | Spend (period) | `e_total_p` | money | formula |
+| R | Spend (range) | `e_total_r` | money | formula |
+| S | Month start | `m_start` | date | formula |
+| T | Month end | `m_end` | date | formula |
+| U | Month | `m_label` | text | formula |
+| V | Revenue | `m_rev` | money | formula |
+| W | Invoiced | `m_inv` | money | formula |
+| X | Expenses | `m_exp` | money | formula |
+| Y | Profit | `m_profit` | money | formula |
+| Z | Bookings | `m_bookings` | int | formula |
+| AA | Completed | `m_completed` | int | formula |
+| AB | Cancelled | `m_cancelled` | int | formula |
+| AC | Visits | `m_visits` | int | formula |
+| AD | New clients | `m_new_clients` | int | formula |
+| AE | Business distance | `m_km` | number1 | formula |
+| AF | Revenue last year | `m_prev_rev` | money | formula |
+| AG | Staff | `st_name` | text | formula |
+| AH | Visits (range) | `st_visits_r` | int | formula |
+| AI | Hours (range) | `st_hours_r` | number | formula |
+| AJ | Revenue (range) | `st_rev_r` | money | formula |
+| AK | Distance (range) | `st_km_r` | number1 | formula |
+| AL | Cancellation reason | `cr_reason` | text | formula |
+| AM | Cancellations (range) | `cr_count` | int | formula |
+| AN | Payment method | `pm_method` | text | formula |
+| AO | Collected (range) | `pm_total` | money | formula |
+| AP | Referral source | `ref_source` | text | formula |
+| AQ | Clients from source | `ref_clients` | int | formula |
+| AR | Revenue from source | `ref_revenue` | money | formula |
+
+---
+
+*8,987 lines of Python in 42 files.*

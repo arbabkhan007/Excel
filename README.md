@@ -93,7 +93,7 @@ generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
 
 Everything needed to build the workbook is packed into
 
-    download/pet-sitting-spreadsheet-source.zip   (220 KB)
+    download/pet-sitting-spreadsheet-source.zip   (244 KB)
 
 [Download the zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip)
 — unzip it anywhere and run:

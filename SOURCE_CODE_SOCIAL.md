@@ -25,6 +25,13 @@ python build_social_media_workbook.py --help
 
 ## Contents
 
+* [0. How it is put together](#0-how-it-is-put-together)
+  * [The build pipeline](#the-build-pipeline)
+  * [Describing a column](#describing-a-column)
+  * [The rules every formula obeys](#the-rules-every-formula-obeys)
+  * [The hidden `Calc` tab](#the-hidden-calc-tab)
+  * [Every tab at a glance](#every-tab-at-a-glance)
+  * [Every file at a glance](#every-file-at-a-glance)
 * [1. Run it](#1-run-it)
   * [`build_social_media_workbook.py`](#build_social_media_workbookpy)
 * [2. The package](#2-the-package)
@@ -88,6 +95,226 @@ python build_social_media_workbook.py --help
   * [`tools/recalc_check.py`](#toolsrecalc_checkpy)
   * [`tools/export_source_md.py`](#toolsexport_source_mdpy)
   * [`tools/make_download_zip.py`](#toolsmake_download_zippy)
+* [Appendix A. Data dictionary](#appendix-a-data-dictionary)
+
+---
+
+## 0. How it is put together
+
+Everything here is plain Python writing a `.xlsx` file through XlsxWriter.
+There is no template workbook, no copy of an existing file and no manual
+step: the spreadsheet is described in code, and the code is the only
+source of truth for what ends up in a cell.
+
+Two kinds of tab exist.
+
+* A **register** is a data tab — a header row and hundreds of rows under
+  it. Its module exposes `NAME`, a `spec(cfg)` that returns a
+  `SheetSpec` (a list of `Col` objects) and, optionally, a
+  `decorate(sheet, fmts, cfg)` that adds totals or notes underneath the
+  grid. Nothing in a register module writes cells directly.
+* A **page** is a hand-built tab — the dashboards, the reports, the
+  printables, the welcome and help pages. Its module exposes
+  `build(book, fmts, cfg, reg)` and writes with `SheetWriter` helpers:
+  `banner`, `section`, `kpi`, `table_head`, `calc_row`, `note`,
+  `bullets`, `field`, `merge`, `finish`.
+
+### The build pipeline
+
+`build_social_media_workbook.py` parses the command line into a `Config`, then
+`social_media_spreadsheet.build.build_workbook(path, cfg)` does six things in order:
+
+1. **Open the workbook** and stamp the document properties — title,
+   author, company, keywords and a comment naming the protection
+   password. The author is the same on every generated file.
+2. **Build the `FormatBook`.** Every visual style the product uses is
+   created once, up front: a style (text, date, money, percent, status,
+   link, …) crossed with a mode (`INPUT` cream and unlocked, `CALC` grey
+   and locked, `PLAIN`), plus the page chrome (titles, section bars, KPI
+   tiles, notes) and the conditional formatting palette.
+3. **Register every `SheetSpec` first**, before a single tab is written.
+   This is what lets any sheet refer to any other sheet's columns by
+   name regardless of which tab happens to be written first.
+4. **Write the tabs in `SHEET_ORDER`.** Registers go through
+   `build_register()` — `SheetWriter.grid(spec)` writes widths, formats,
+   headers, formulas, sample rows, drop downs, header comments,
+   conditional formats, the autofilter, frozen panes and the print
+   setup — then the module's `decorate()` runs and the sheet is
+   protected. Pages call their own `build()`.
+5. **Define the live lookup names** (`ContentIDs`, `TeamNames`, …) from
+   the registry. Each is an `OFFSET` range that grows and shrinks with
+   the number of filled rows, so a drop down never shows blanks.
+6. **Hide the `Calc` engine**, activate the first tab and close the file.
+
+### Describing a column
+
+A column is declared once, for one row, with placeholders:
+
+```python
+Col("er", "Engagement rate", 11, "percent",
+    formula='=IFERROR({engagements}{r}/{reach}{r},"")',
+    cf=[{"type": "cell", "criteria": ">=", "value": "=TargetEngagement",
+         "fmt": "good"}])
+```
+
+`Col` carries the key, the header text, the width, the style, the
+formula template, the data validation, the header comment, the
+conditional formats, whether the column is hidden and which outline
+group it belongs to. `Registry.render()` expands the template per row:
+
+| Token | Becomes |
+|-------|---------|
+| `{r}` / `{r_prev}` | this row number / the row above |
+| `{key}` | the column letter of another column on the same sheet |
+| `{first}` / `{last}` | the first and last data row of the sheet |
+| `[[Sheet.key]]` | an absolute range on another sheet, e.g. `'Content Calendar'!$G$5:$G$604` |
+| `[[Sheet.key#12]]` | one cell of that column |
+| `[[Sheet.key#]]` | the same row as the formula being written |
+
+Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
+`min_if`, `blank_if`, `safe`, `lookup`, `dynamic_name`, `quote_sheet`.
+
+### The rules every formula obeys
+
+* **Excel 2010 safe.** `SUMIFS`, `COUNTIFS`, `INDEX/MATCH`, `SMALL`,
+  `LARGE`, `RANK`, `EDATE`, `EOMONTH`, `SUMPRODUCT(MAX(...))`. No
+  dynamic arrays, no `XLOOKUP`, no `IFS`, no `AGGREGATE`, nothing that
+  needs Ctrl+Shift+Enter. The file opens in Excel 2010 and later, Google
+  Sheets, LibreOffice and Numbers.
+* **No charts.** The vendored XlsxWriter in this repository cannot write
+  them, so trends are drawn with `add_sparkline`, data bars and
+  three-colour scales — which also survive a Google Sheets import.
+* **Nth-row lookups without array formulas.** Hidden composite key
+  columns (`date + ROW()/100000`) plus `SMALL` and `INDEX/MATCH` answer
+  "the third thing on 14 March" and "the next eight due" with ordinary
+  formulas.
+* **One number, one home.** Nothing is typed into two tabs. Every other
+  appearance of a figure is a formula pointing back at the one place it
+  was entered.
+* **Locked where it matters.** Formula cells are locked, input cells are
+  not, and every sheet is protected with the same password — so the
+  maths cannot be typed over by accident but the cream cells stay open.
+
+### The hidden `Calc` tab
+
+Dashboards do not aggregate the registers directly. A hidden sheet
+pre-computes one row per month, per platform/service, per category and
+per owner, each with its own ranking key, and the visible pages read
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy
+`SUMIFS` work in one place, keeps recalculation predictable, and makes
+every dashboard number traceable to a single cell.
+
+
+### Every tab at a glance
+
+43 tabs in the order they appear in the finished workbook. "Rows" is the capacity of a register at the default `--rows` setting.
+
+| # | Tab | Kind | Written by | Columns | Rows |
+|---|-----|------|------------|--------:|-----:|
+| 1 | **Start Here** | page | `social_media_spreadsheet/sheets/start_here.py` | - | - |
+| 2 | **Dashboard** | page | `social_media_spreadsheet/sheets/dashboard.py` | - | - |
+| 3 | **Annual Dashboard** | page | `social_media_spreadsheet/sheets/annual.py` | - | - |
+| 4 | **Settings** | page | `social_media_spreadsheet/sheets/settings.py` | - | - |
+| 5 | **Lists** | page | `social_media_spreadsheet/sheets/lists.py` | - | - |
+| 6 | **Brand Voice** | page | `social_media_spreadsheet/sheets/brand_voice.py` | - | - |
+| 7 | **Accounts** | register | `social_media_spreadsheet/sheets/accounts.py` | 30 | 30 |
+| 8 | **Audience Personas** | register | `social_media_spreadsheet/sheets/personas.py` | 26 | 12 |
+| 9 | **Content Pillars** | register | `social_media_spreadsheet/sheets/pillars.py` | 19 | 20 |
+| 10 | **Content Calendar** | register | `social_media_spreadsheet/sheets/calendar_sheet.py` | 40 | 600 |
+| 11 | **Month View** | page | `social_media_spreadsheet/sheets/month_view.py` | - | - |
+| 12 | **Workflow** | page | `social_media_spreadsheet/sheets/workflow.py` | - | - |
+| 13 | **Idea Bank** | register | `social_media_spreadsheet/sheets/ideas.py` | 31 | 300 |
+| 14 | **Caption Bank** | register | `social_media_spreadsheet/sheets/captions.py` | 29 | 200 |
+| 15 | **Hashtag Bank** | register | `social_media_spreadsheet/sheets/hashtags.py` | 21 | 300 |
+| 16 | **Instagram** | register | `social_media_spreadsheet/sheets/platforms.py` | 25 | 200 |
+| 17 | **TikTok** | register | `social_media_spreadsheet/sheets/platforms.py` | 28 | 200 |
+| 18 | **Pinterest** | register | `social_media_spreadsheet/sheets/platforms.py` | 29 | 200 |
+| 19 | **YouTube** | register | `social_media_spreadsheet/sheets/platforms.py` | 37 | 120 |
+| 20 | **Facebook** | register | `social_media_spreadsheet/sheets/platforms.py` | 25 | 200 |
+| 21 | **Campaigns** | register | `social_media_spreadsheet/sheets/campaigns.py` | 37 | 60 |
+| 22 | **Launch Planner** | register | `social_media_spreadsheet/sheets/launches.py` | 32 | 40 |
+| 23 | **Seasonal Planner** | register | `social_media_spreadsheet/sheets/seasonal.py` | 18 | 60 |
+| 24 | **Influencers** | register | `social_media_spreadsheet/sheets/influencers.py` | 30 | 60 |
+| 25 | **UGC Tracker** | register | `social_media_spreadsheet/sheets/ugc.py` | 21 | 100 |
+| 26 | **Repurposing** | register | `social_media_spreadsheet/sheets/repurposing.py` | 22 | 150 |
+| 27 | **Competitors** | register | `social_media_spreadsheet/sheets/competitors.py` | 24 | 40 |
+| 28 | **Trends** | register | `social_media_spreadsheet/sheets/trends.py` | 23 | 80 |
+| 29 | **Analytics** | register | `social_media_spreadsheet/sheets/analytics.py` | 41 | 150 |
+| 30 | **Performance** | register | `social_media_spreadsheet/sheets/performance.py` | 41 | 400 |
+| 31 | **AB Tests** | register | `social_media_spreadsheet/sheets/ab_tests.py` | 28 | 40 |
+| 32 | **Ads** | register | `social_media_spreadsheet/sheets/ads.py` | 33 | 100 |
+| 33 | **Assets** | register | `social_media_spreadsheet/sheets/assets.py` | 25 | 250 |
+| 34 | **Goals** | register | `social_media_spreadsheet/sheets/goals.py` | 25 | 40 |
+| 35 | **Budget** | register | `social_media_spreadsheet/sheets/budget.py` | 17 | 60 |
+| 36 | **Team** | register | `social_media_spreadsheet/sheets/team.py` | 19 | 30 |
+| 37 | **Tasks** | register | `social_media_spreadsheet/sheets/tasks.py` | 13 | 60 |
+| 38 | **Compliance** | register | `social_media_spreadsheet/sheets/compliance.py` | 13 | 100 |
+| 39 | **Reports** | page | `social_media_spreadsheet/sheets/reports.py` | - | - |
+| 40 | **Print Brief** | page | `social_media_spreadsheet/sheets/printables.py` | - | - |
+| 41 | **Print Week** | page | `social_media_spreadsheet/sheets/printables.py` | - | - |
+| 42 | **Help** | page | `social_media_spreadsheet/sheets/help_tab.py` | - | - |
+| 43 | **Calc** | register | `social_media_spreadsheet/sheets/calc.py` | 88 | 600 |
+
+### Every file at a glance
+
+| File | Lines | What it is |
+|------|------:|------------|
+| [`build_social_media_workbook.py`](#build_social_media_workbookpy) | 32 | Build the Social Media Content Calendar & Analytics Planner |
+| [`social_media_spreadsheet/__init__.py`](#social_media_spreadsheet__init__py) | 32 | Social Media Content Calendar & Analytics Planner =================================================... |
+| [`social_media_spreadsheet/__main__.py`](#social_media_spreadsheet__main__py) | 6 | ``python -m social_media_spreadsheet`` |
+| [`social_media_spreadsheet/cli.py`](#social_media_spreadsheetclipy) | 117 | Command line front end |
+| [`social_media_spreadsheet/config.py`](#social_media_spreadsheetconfigpy) | 221 | Configuration for the Social Media Content Calendar & Analytics Planner |
+| [`social_media_spreadsheet/layout.py`](#social_media_spreadsheetlayoutpy) | 244 | Layout engine |
+| [`social_media_spreadsheet/formats.py`](#social_media_spreadsheetformatspy) | 200 | Cell format factory |
+| [`social_media_spreadsheet/writer.py`](#social_media_spreadsheetwriterpy) | 444 | Sheet writing helpers shared by every tab of the workbook |
+| [`social_media_spreadsheet/names.py`](#social_media_spreadsheetnamespy) | 46 | Workbook level defined names that point at the register sheets |
+| [`social_media_spreadsheet/build.py`](#social_media_spreadsheetbuildpy) | 160 | Workbook builder: puts every tab together in the right order |
+| [`social_media_spreadsheet/sample_data.py`](#social_media_spreadsheetsample_datapy) | 1,178 | Demo data |
+| [`social_media_spreadsheet/sheets/__init__.py`](#social_media_spreadsheetsheets__init__py) | 21 | One module per tab of the workbook |
+| [`social_media_spreadsheet/sheets/common.py`](#social_media_spreadsheetsheetscommonpy) | 167 | Small building blocks shared by the register sheets |
+| [`social_media_spreadsheet/sheets/lists.py`](#social_media_spreadsheetsheetslistspy) | 194 | The `Lists` tab: every drop down list in the workbook lives here |
+| [`social_media_spreadsheet/sheets/settings.py`](#social_media_spreadsheetsheetssettingspy) | 195 | The `Settings` tab - business setup, brand basics, targets and ID prefixes |
+| [`social_media_spreadsheet/sheets/accounts.py`](#social_media_spreadsheetsheetsaccountspy) | 147 | `Accounts` - one row per social media account, with a profile checklist |
+| [`social_media_spreadsheet/sheets/personas.py`](#social_media_spreadsheetsheetspersonaspy) | 85 | `Audience Personas` - who you are talking to, and what to make for them |
+| [`social_media_spreadsheet/sheets/pillars.py`](#social_media_spreadsheetsheetspillarspy) | 126 | `Content Pillars` - the themes you post about, and the mix you planned |
+| [`social_media_spreadsheet/sheets/calendar_sheet.py`](#social_media_spreadsheetsheetscalendar_sheetpy) | 186 | `Content Calendar` - the master register |
+| [`social_media_spreadsheet/sheets/ideas.py`](#social_media_spreadsheetsheetsideaspy) | 101 | `Idea Bank` - the parking place for every content idea |
+| [`social_media_spreadsheet/sheets/captions.py`](#social_media_spreadsheetsheetscaptionspy) | 112 | `Caption Bank` - reusable hooks, captions and calls to action |
+| [`social_media_spreadsheet/sheets/hashtags.py`](#social_media_spreadsheetsheetshashtagspy) | 95 | `Hashtag Bank` - hashtag sets, keywords and search intent |
+| [`social_media_spreadsheet/sheets/platforms.py`](#social_media_spreadsheetsheetsplatformspy) | 350 | The five platform planners, built from one shared factory |
+| [`social_media_spreadsheet/sheets/campaigns.py`](#social_media_spreadsheetsheetscampaignspy) | 137 | `Campaigns` - themed pushes with a budget, a goal and a result |
+| [`social_media_spreadsheet/sheets/launches.py`](#social_media_spreadsheetsheetslaunchespy) | 120 | `Launch Planner` - the run-up, the launch day and the follow-through |
+| [`social_media_spreadsheet/sheets/seasonal.py`](#social_media_spreadsheetsheetsseasonalpy) | 74 | `Seasonal Planner` - holidays, awareness days and seasonal moments |
+| [`social_media_spreadsheet/sheets/influencers.py`](#social_media_spreadsheetsheetsinfluencerspy) | 115 | `Influencers` - outreach, deliverables, fees and what came back |
+| [`social_media_spreadsheet/sheets/ugc.py`](#social_media_spreadsheetsheetsugcpy) | 100 | `UGC Tracker` - customer content, permission and where you reposted it |
+| [`social_media_spreadsheet/sheets/repurposing.py`](#social_media_spreadsheetsheetsrepurposingpy) | 89 | `Repurposing` - one good post, used five more times |
+| [`social_media_spreadsheet/sheets/competitors.py`](#social_media_spreadsheetsheetscompetitorspy) | 82 | `Competitors` - what the people in your niche are doing |
+| [`social_media_spreadsheet/sheets/trends.py`](#social_media_spreadsheetsheetstrendspy) | 85 | `Trends` - sounds, formats and topics worth jumping on quickly |
+| [`social_media_spreadsheet/sheets/assets.py`](#social_media_spreadsheetsheetsassetspy) | 92 | `Assets` - the creative library: photos, clips, templates, thumbnails |
+| [`social_media_spreadsheet/sheets/team.py`](#social_media_spreadsheetsheetsteampy) | 91 | `Team` - who does what, and how much of it |
+| [`social_media_spreadsheet/sheets/tasks.py`](#social_media_spreadsheetsheetstaskspy) | 71 | `Tasks` - the jobs behind the posts |
+| [`social_media_spreadsheet/sheets/compliance.py`](#social_media_spreadsheetsheetscompliancepy) | 155 | `Compliance` - the legal and quality checks, written out as a list |
+| [`social_media_spreadsheet/sheets/analytics.py`](#social_media_spreadsheetsheetsanalyticspy) | 170 | `Analytics` - the monthly numbers you copy from each platform |
+| [`social_media_spreadsheet/sheets/performance.py`](#social_media_spreadsheetsheetsperformancepy) | 171 | `Performance` - the numbers for one individual post |
+| [`social_media_spreadsheet/sheets/ab_tests.py`](#social_media_spreadsheetsheetsab_testspy) | 112 | `A/B Tests` - change one thing, measure it, keep the winner |
+| [`social_media_spreadsheet/sheets/ads.py`](#social_media_spreadsheetsheetsadspy) | 124 | `Ads` - paid promotion, what it cost and what it brought back |
+| [`social_media_spreadsheet/sheets/goals.py`](#social_media_spreadsheetsheetsgoalspy) | 116 | `Goals` - the handful of numbers you are actually trying to move |
+| [`social_media_spreadsheet/sheets/budget.py`](#social_media_spreadsheetsheetsbudgetpy) | 90 | `Budget` - what social media costs you, month by month |
+| [`social_media_spreadsheet/sheets/calc.py`](#social_media_spreadsheetsheetscalcpy) | 336 | `Calc` - hidden helper sheet |
+| [`social_media_spreadsheet/sheets/dashboard.py`](#social_media_spreadsheetsheetsdashboardpy) | 375 | `Dashboard` - the one page view of the month |
+| [`social_media_spreadsheet/sheets/annual.py`](#social_media_spreadsheetsheetsannualpy) | 348 | `Annual Dashboard` - the whole year on one page |
+| [`social_media_spreadsheet/sheets/month_view.py`](#social_media_spreadsheetsheetsmonth_viewpy) | 169 | `Month View` - the calendar as a calendar: six weeks across seven days |
+| [`social_media_spreadsheet/sheets/workflow.py`](#social_media_spreadsheetsheetsworkflowpy) | 204 | `Workflow` - the production pipeline: what is where, and what is late |
+| [`social_media_spreadsheet/sheets/brand_voice.py`](#social_media_spreadsheetsheetsbrand_voicepy) | 165 | `Brand Voice` - how the brand sounds, looks and behaves online |
+| [`social_media_spreadsheet/sheets/reports.py`](#social_media_spreadsheetsheetsreportspy) | 267 | `Reports` - pick two dates, print the result or send it to a client |
+| [`social_media_spreadsheet/sheets/start_here.py`](#social_media_spreadsheetsheetsstart_herepy) | 176 | `Start Here` - the welcome page and the six step set-up |
+| [`social_media_spreadsheet/sheets/printables.py`](#social_media_spreadsheetsheetsprintablespy) | 271 | The print-ready tabs: a single content brief and a weekly plan |
+| [`social_media_spreadsheet/sheets/help_tab.py`](#social_media_spreadsheetsheetshelp_tabpy) | 241 | `Help` - how everything works, what every metric means, and the limits |
+| [`tools/validate_social_workbook.py`](#toolsvalidate_social_workbookpy) | 297 | Static checks on a generated Social Media Planner workbook |
+| [`tools/check_social_sample.py`](#toolscheck_social_samplepy) | 209 | Cross-check the example records in a generated social media workbook |
+| [`tools/recalc_check.py`](#toolsrecalc_checkpy) | 216 | Really calculate every formula in a generated workbook and report any cell that ends up as an Excel error... |
+| [`tools/export_source_md.py`](#toolsexport_source_mdpy) | 732 | Write every source file of a generator into one markdown document |
+| [`tools/make_download_zip.py`](#toolsmake_download_zippy) | 182 | Pack a generator into a single zip people can download and run |
 
 ---
 
@@ -104,7 +331,25 @@ The workbook lands in `output/Social Media Content Planner.xlsx`.
 
 ### `build_social_media_workbook.py`
 
-Build the Social Media Content Calendar & Analytics Planner. *(32 lines)*
+*32 lines*
+
+> Build the Social Media Content Calendar & Analytics Planner.
+>
+> Double click it, or run::
+>
+>     python build_social_media_workbook.py
+>
+> The finished .xlsx lands in the ``output`` folder next to this script.
+> Author of the generated workbook: Novality Store.
+>
+> Options (all optional)::
+>
+>     python build_social_media_workbook.py --blank        # no example data
+>     python build_social_media_workbook.py --currency "£" --currency-code GBP
+>     python build_social_media_workbook.py --year 2027
+>     python build_social_media_workbook.py -o "~/Desktop/Planner.xlsx"
+>
+> See ``python build_social_media_workbook.py --help`` for the full list.
 
 ````python
 #!/usr/bin/env python3
@@ -149,7 +394,29 @@ Configuration, the formula template engine, cell formats, the sheet writer, the 
 
 ### `social_media_spreadsheet/__init__.py`
 
-Social Media Content Calendar & Analytics Planner ================================================= Generates a ready-to-sell Excel workbook for social media managers, creators and small brands: a 12 month content calendar, idea / caption / hashtag banks, a production workflow, campaigns, launches, influencer and UGC trackers, repurposing, competitor and trend research, per-platform planners for Instagram, TikTok, Pinterest, YouTube and Facebook, monthly analytics, post level performance scoring, A/B tests, ads, assets, goals, budget and ROI, team tasks, dashboards, reports and printable briefs. *(32 lines)*
+*32 lines*
+
+> Social Media Content Calendar & Analytics Planner
+> =================================================
+>
+> Generates a ready-to-sell Excel workbook for social media managers, creators
+> and small brands: a 12 month content calendar, idea / caption / hashtag
+> banks, a production workflow, campaigns, launches, influencer and UGC
+> trackers, repurposing, competitor and trend research, per-platform planners
+> for Instagram, TikTok, Pinterest, YouTube and Facebook, monthly analytics,
+> post level performance scoring, A/B tests, ads, assets, goals, budget and
+> ROI, team tasks, dashboards, reports and printable briefs.
+>
+>     python -m social_media_spreadsheet --output "My Planner.xlsx"
+>
+> or from Python::
+>
+>     from social_media_spreadsheet import build_workbook, Config
+>     build_workbook("planner.xlsx", Config(include_sample_data=False))
+>
+> Every formula cell is locked and every sheet is protected with the password
+> in :class:`~social_media_spreadsheet.config.Config` (default ``premium``), so
+> the maths cannot be edited by accident while the input cells stay open.
 
 ````python
 """
@@ -188,7 +455,9 @@ __author__ = AUTHOR
 
 ### `social_media_spreadsheet/__main__.py`
 
-``python -m social_media_spreadsheet``. *(6 lines)*
+*6 lines*
+
+> ``python -m social_media_spreadsheet``.
 
 ````python
 """``python -m social_media_spreadsheet``."""
@@ -201,7 +470,21 @@ if __name__ == "__main__":
 
 ### `social_media_spreadsheet/cli.py`
 
-Command line front end. *(117 lines)*
+*117 lines · 3 functions*
+
+> Command line front end.
+>
+> python -m social_media_spreadsheet
+> python -m social_media_spreadsheet -o "output/Planner.xlsx" --blank
+> python -m social_media_spreadsheet --currency "£" --year 2027 --rows 300
+
+| Defines | What it does |
+|---------|--------------|
+| `build_parser()` |  |
+| `config_from_args(args)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `DEFAULT_OUTPUT` (os.path.join(...)).
 
 ````python
 """Command line front end.
@@ -325,7 +608,23 @@ if __name__ == "__main__":        # pragma: no cover
 
 ### `social_media_spreadsheet/config.py`
 
-Configuration for the Social Media Content Calendar & Analytics Planner. *(221 lines)*
+*221 lines · 3 classes*
+
+> Configuration for the Social Media Content Calendar & Analytics Planner.
+>
+> Everything a shop owner may want to re-brand lives here, so the workbook can
+> be regenerated for a different brand, currency or country without touching
+> any of the sheet code.
+>
+> Author of the generated workbooks: Novality Store.
+
+| Defines | What it does |
+|---------|--------------|
+| `class Palette` |  |
+| `class BrandDefaults` | Sample values written into the Business Setup (Settings) sheet |
+| `class Config` | All generator options |
+
+**Module constants:** `AUTHOR` ('Novality Store'), `PRODUCT_NAME` ('Social Media Content Calendar & Analytics Planner'), `PRODUCT_SUBTITLE` ('12-Month Content Calendar, Caption & Hashtag Banks, Camp...), `PRODUCT_VERSION` ('1.0.0'), `PRODUCT_LISTING_TITLE` ('Social Media Content Planner Spreadsheet, 12-Month Conte...), `FORMULA_PASSWORD` ('premium'), `TRACKED_PLATFORMS` (5 items), `DEFAULT_ROWS` (31 entries).
 
 ````python
 """
@@ -553,7 +852,41 @@ class Config:
 
 ### `social_media_spreadsheet/layout.py`
 
-Layout engine. *(244 lines)*
+*244 lines · 3 classes · 10 functions*
+
+> Layout engine.
+>
+> The workbook is described declaratively: every register sheet (Content Calendar,
+> Caption Bank, Analytics, ...) is a :class:`SheetSpec` made of :class:`Col`
+> objects.  Formulas
+> are written as templates that never contain hard coded column letters, so
+> columns can be reordered or inserted without breaking a single formula:
+>
+>     "=IF({title}{r}=\"\",\"\",SUMIFS([[Performance.reach]],[[Performance.content]],{id}{r}))"
+>
+>     {r}            -> the current Excel row number (1 based)
+>     {key}          -> column letter of the column `key` on the *same* sheet
+>     [[Sheet.key]]  -> absolute range of that column's data rows, e.g.
+>                       Performance!$K$5:$K$304
+>     [[Sheet.key#r]]-> absolute single cell of that column on row r
+
+| Defines | What it does |
+|---------|--------------|
+| `col_letter(index)` | 0 based column index -> Excel column letter |
+| `quote_sheet(name)` | Quote a sheet name for use inside a formula when it needs it |
+| `cell_ref(col, row, absolute)` |  |
+| `class Col` | One column of a register sheet |
+| `class SheetSpec` | A register sheet: title band, header row and N pre-built data rows |
+| `class Registry` | Lookup table of every registered :class:`SheetSpec` |
+| `max_if(value_range, *conditions)` | MAX of `value_range` where all conditions hold (no CSE required) |
+| `min_if(value_range, *conditions, *, sentinel)` | MIN of `value_range` where all conditions hold (no CSE required) |
+| `blank_if(test, result)` |  |
+| `safe(expr, fallback)` |  |
+| `lookup(value, table_range, index_range, fallback)` | INDEX/MATCH lookup (works left or right, unlike VLOOKUP) |
+| `dynamic_name(sheet, letter, first, last, count_text)` | OFFSET based defined name that grows with the populated rows |
+| `join_nonblank(parts)` | Build `a & b & c` style concatenation |
+
+**Module constants:** `TITLE_ROW` (1), `SUBTITLE_ROW` (2), `NAV_ROW` (3), `HEADER_ROW` (4), `DATA_ROW` (5).
 
 ````python
 """
@@ -804,7 +1137,23 @@ def join_nonblank(parts: Sequence[str]) -> str:
 
 ### `social_media_spreadsheet/formats.py`
 
-Cell format factory. *(200 lines)*
+*200 lines · 1 class*
+
+> Cell format factory.
+>
+> Two things matter here:
+>
+> * **Input cells** are unlocked (``locked: False``) and painted cream, so the
+>   user can type in them while the sheet is protected.
+> * **Formula cells** are locked (``locked: True``) and painted cool grey.  With
+>   the sheet protection password in place ("premium" by default) they cannot be
+>   overwritten by accident.
+
+| Defines | What it does |
+|---------|--------------|
+| `class FormatBook` | Creates (and caches) every :class:`xlsxwriter.format.Format` used |
+
+**Module constants:** `P` (Palette), `INPUT` ('input'), `CALC` ('calc'), `PLAIN` ('plain').
 
 ````python
 """
@@ -1011,7 +1360,29 @@ class FormatBook:
 
 ### `social_media_spreadsheet/writer.py`
 
-Sheet writing helpers shared by every tab of the workbook. *(444 lines)*
+*444 lines · 1 class · 7 functions*
+
+> Sheet writing helpers shared by every tab of the workbook.
+>
+> :class:`SheetWriter` wraps an XlsxWriter worksheet and adds the house style:
+> title band, navigation strip, section headers, KPI tiles, label/value settings
+> rows and - most importantly - :meth:`SheetWriter.grid`, which turns a
+> :class:`~social_media_spreadsheet.layout.SheetSpec` into a finished register
+> with headers, drop downs, conditional formats, sample rows, frozen panes and
+> locked formula cells.
+
+| Defines | What it does |
+|---------|--------------|
+| `class SheetWriter` | Convenience wrapper around a worksheet |
+| `yes_no(validate_note)` |  |
+| `list_from(name)` | Drop down fed by a defined name (see lists.py) |
+| `date_check()` |  |
+| `number_check(minimum, maximum, decimal)` |  |
+| `cf_text(text, fmt, criteria)` |  |
+| `cf_formula(formula, fmt)` |  |
+| `cf_bar(color)` |  |
+
+**Module constants:** `P` (Palette), `NAV_LINKS` (9 items), `PROTECT_OPTIONS` (15 entries).
 
 ````python
 """
@@ -1462,7 +1833,21 @@ def cf_bar(color: str = "#2E7D8F") -> Dict[str, Any]:
 
 ### `social_media_spreadsheet/names.py`
 
-Workbook level defined names that point at the register sheets. *(46 lines)*
+*46 lines · 1 function*
+
+> Workbook level defined names that point at the register sheets.
+>
+> The drop down lists on the `Lists` tab define their own names; these are the
+> ones that have to follow live data (content IDs, caption IDs, campaign names,
+> ...), so they are built from the registry once every register has been
+> created.  Each one is an ``OFFSET`` range that grows and shrinks with the
+> number of filled rows.
+
+| Defines | What it does |
+|---------|--------------|
+| `define_cross_sheet_names(book, reg)` | Create the live lookup names |
+
+**Module constants:** `CROSS_SHEET_NAMES` (16 entries).
 
 ````python
 """Workbook level defined names that point at the register sheets.
@@ -1515,7 +1900,22 @@ def define_cross_sheet_names(book, reg: Registry) -> None:
 
 ### `social_media_spreadsheet/build.py`
 
-Workbook builder: puts every tab together in the right order. *(160 lines)*
+*160 lines · 3 functions*
+
+> Workbook builder: puts every tab together in the right order.
+>
+> Typical use::
+>
+>     from social_media_spreadsheet import build_workbook
+>     build_workbook("Social Media Content Planner.xlsx")
+
+| Defines | What it does |
+|---------|--------------|
+| `build_register(book, fmts, cfg, reg, module)` | Create one register sheet from its :class:`SheetSpec` |
+| `build_workbook(path, cfg)` | Write the whole product to *path* and return the path |
+| `_set_properties(book, cfg)` |  |
+
+**Module constants:** `REGISTER_MODULES` (31 items), `SHEET_ORDER` (43 items), `PAGE_BUILDERS` (12 entries), `REGISTER_BY_NAME` ({module.NAME: module for module in REGISTER_MODULES}).
 
 ````python
 """Workbook builder: puts every tab together in the right order.
@@ -1682,7 +2082,27 @@ def _set_properties(book, cfg: Config) -> None:
 
 ### `social_media_spreadsheet/sample_data.py`
 
-Demo data. *(1178 lines)*
+*1,178 lines · 1 class · 4 functions*
+
+> Demo data.
+>
+> A small handmade-ceramics brand with five social accounts, ten weeks of
+> content, captions, hashtags, campaigns, influencers, analytics and post
+> level performance.  Everything is written into the input (cream) cells so
+> the dashboards, reports and alerts show meaningful numbers the moment the
+> workbook is opened, and everything is dated relative to the build date.
+>
+> Switch it all off with ``--blank``.
+
+| Defines | What it does |
+|---------|--------------|
+| `d(base, offset)` |  |
+| `month_key(day)` |  |
+| `class Sample` | fields: accounts, personas, pillars, calendar, ideas, captions, hashtags, instagram |
+| `get(cfg)` | Build (once) the demo dataset for this configuration |
+| `_build(cfg)` |  |
+
+**Module constants:** `PLAN` (54 items), `CAMPAIGN_FOR` (3 items), `OBJECTIVES` (7 entries), `CTAS` (7 entries), `FUNNEL` (7 entries), `SLOTS` (5 entries), `OWNERS` (4 items).
 
 ````python
 """
@@ -2873,7 +3293,9 @@ One module per data tab. Each returns a `SheetSpec` - a list of columns with the
 
 ### `social_media_spreadsheet/sheets/__init__.py`
 
-One module per tab of the workbook. *(21 lines)*
+*21 lines*
+
+> One module per tab of the workbook.
 
 ````python
 """One module per tab of the workbook."""
@@ -2901,7 +3323,30 @@ __all__ = [
 
 ### `social_media_spreadsheet/sheets/common.py`
 
-Small building blocks shared by the register sheets. *(167 lines)*
+*167 lines · 16 functions*
+
+> Small building blocks shared by the register sheets.
+
+| Defines | What it does |
+|---------|--------------|
+| `id_col(trigger, prefix, digits, width, header, note)` | Auto numbered ID column (blank until the trigger column is filled) |
+| `month_col(date_key, key, header, width)` | `yyyy-mm` text column - the key every monthly roll-up groups on |
+| `weekday_col(date_key, key, header, width)` |  |
+| `week_col(date_key, key, header, width)` | ISO-ish week number, honouring the week start day on Settings |
+| `alert_cf()` | Traffic light colouring for the 'Alert' / 'Check' columns |
+| `status_cf()` | Colouring for the content workflow and every other status column |
+| `rate_cf(target_name)` | Green above the target rate, amber below it |
+| `bar_cf(color)` |  |
+| `scale_cf()` |  |
+| `money_cf()` |  |
+| `dup_cf()` |  |
+| `flag_yes_no_cf()` |  |
+| `yesno(note)` |  |
+| `score_validation(maximum)` |  |
+| `blank(trigger, body)` | `=IF(trigger="","",body)` with the standard row placeholders |
+| `lookup_content(target, key)` | Pull a column of the Content Calendar for the content ID in `key` |
+
+**Module constants:** `ROW_OFFSET` (HEADER_ROW).
 
 ````python
 """Small building blocks shared by the register sheets."""
@@ -3075,7 +3520,20 @@ def lookup_content(target: str, key: str = "content") -> str:
 
 ### `social_media_spreadsheet/sheets/lists.py`
 
-The `Lists` tab: every drop down list in the workbook lives here. *(194 lines)*
+*194 lines · 3 functions*
+
+> The `Lists` tab: every drop down list in the workbook lives here.
+>
+> Each column becomes a *dynamic* defined name (OFFSET + COUNTIF) so the user
+> can add or remove options and every drop down in the workbook follows along.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+| `ref(name)` | A1 reference to this list's column on the current row, e.g |
+| `options(name)` | Static copy of a list (used for sample data sanity) |
+
+**Module constants:** `SHEET` ('Lists'), `ROWS` (40), `LISTS` (OrderedDict(...)).
 
 ````python
 """
@@ -3276,7 +3734,19 @@ def options(name: str) -> List[str]:
 
 ### `social_media_spreadsheet/sheets/settings.py`
 
-The `Settings` tab - business setup, brand basics, targets and ID prefixes. *(195 lines)*
+*195 lines · 1 function*
+
+> The `Settings` tab - business setup, brand basics, targets and ID prefixes.
+>
+> Everything the rest of the workbook needs to know about the brand is entered
+> once here and published as a defined name (BrandName, PlanYear,
+> TargetEngagement, ProductionDays ...) so the formulas stay readable.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `SHEET` ('Settings'), `LAST_COL` (8).
 
 ````python
 """
@@ -3478,7 +3948,15 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/accounts.py`
 
-`Accounts` - one row per social media account, with a profile checklist. *(147 lines)*
+*147 lines · 1 function*
+
+> `Accounts` - one row per social media account, with a profile checklist.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Accounts'), `CHECKS` (6 items).
 
 ````python
 """`Accounts` - one row per social media account, with a profile checklist."""
@@ -3632,7 +4110,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/personas.py`
 
-`Audience Personas` - who you are talking to, and what to make for them. *(85 lines)*
+*85 lines · 1 function*
+
+> `Audience Personas` - who you are talking to, and what to make for them.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Audience Personas').
 
 ````python
 """`Audience Personas` - who you are talking to, and what to make for them."""
@@ -3724,7 +4210,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/pillars.py`
 
-`Content Pillars` - the themes you post about, and the mix you planned. *(126 lines)*
+*126 lines · 2 functions*
+
+> `Content Pillars` - the themes you post about, and the mix you planned.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+| `decorate(sheet, fmts, cfg, reg)` | Totals strip under the grid: do the target shares add up? |
+
+**Module constants:** `NAME` ('Content Pillars').
 
 ````python
 """`Content Pillars` - the themes you post about, and the mix you planned."""
@@ -3857,7 +4352,19 @@ def decorate(sheet, fmts, cfg: Config, reg) -> None:
 
 ### `social_media_spreadsheet/sheets/calendar_sheet.py`
 
-`Content Calendar` - the master register. *(186 lines)*
+*186 lines · 1 function*
+
+> `Content Calendar` - the master register. Every post lives on this tab.
+>
+> Everything else in the workbook either feeds this sheet (captions, hashtag
+> groups, assets, campaigns) or reads it (the dashboards, the workflow view,
+> the reports and the printable briefs).
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Content Calendar').
 
 ````python
 """`Content Calendar` - the master register. Every post lives on this tab.
@@ -4050,7 +4557,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/ideas.py`
 
-`Idea Bank` - the parking place for every content idea. *(101 lines)*
+*101 lines · 1 function*
+
+> `Idea Bank` - the parking place for every content idea.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Idea Bank').
 
 ````python
 """`Idea Bank` - the parking place for every content idea."""
@@ -4158,7 +4673,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/captions.py`
 
-`Caption Bank` - reusable hooks, captions and calls to action. *(112 lines)*
+*112 lines · 1 function*
+
+> `Caption Bank` - reusable hooks, captions and calls to action.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Caption Bank'), `LIMIT` ('IF({platform}{r}="Instagram",2200,IF({platform}{r}="TikT...).
 
 ````python
 """`Caption Bank` - reusable hooks, captions and calls to action."""
@@ -4277,7 +4800,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/hashtags.py`
 
-`Hashtag Bank` - hashtag sets, keywords and search intent. *(95 lines)*
+*95 lines · 1 function*
+
+> `Hashtag Bank` - hashtag sets, keywords and search intent.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Hashtag Bank').
 
 ````python
 """`Hashtag Bank` - hashtag sets, keywords and search intent."""
@@ -4379,7 +4910,29 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/platforms.py`
 
-The five platform planners, built from one shared factory. *(350 lines)*
+*350 lines · 1 class · 9 functions*
+
+> The five platform planners, built from one shared factory.
+>
+> Every planner works the same way: pick a content ID from the Content
+> Calendar, fill in the fields that only matter on that platform, and let the
+> grey columns pull the title, date, status and the shared results (reach,
+> engagement, clicks) from the Performance tab.  Nothing is ever typed twice.
+
+| Defines | What it does |
+|---------|--------------|
+| `_head(platform, prefix)` | Content ID + the details pulled back from the Content Calendar |
+| `_shared_results()` | Results every platform shares - pulled from the Performance tab |
+| `_tail(alert_body)` |  |
+| `class Planner` | A tiny module-like object so `build.py` can treat it as a sheet |
+| `_secs(lo, hi)` |  |
+| `_instagram_cols()` |  |
+| `_tiktok_cols()` |  |
+| `_pinterest_cols()` |  |
+| `_youtube_cols()` |  |
+| `_facebook_cols()` |  |
+
+**Module constants:** `CALENDAR` ('Content Calendar'), `INSTAGRAM` (Planner(...)), `TIKTOK` (Planner(...)), `PINTEREST` (Planner(...)), `YOUTUBE` (Planner(...)), `FACEBOOK` (Planner(...)), `PLANNERS` (5 items).
 
 ````python
 """The five platform planners, built from one shared factory.
@@ -4742,7 +5295,15 @@ The tabs that run the work: campaigns and launches, the seasonal plan, collabora
 
 ### `social_media_spreadsheet/sheets/campaigns.py`
 
-`Campaigns` - themed pushes with a budget, a goal and a result. *(137 lines)*
+*137 lines · 1 function*
+
+> `Campaigns` - themed pushes with a budget, a goal and a result.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Campaigns').
 
 ````python
 """`Campaigns` - themed pushes with a budget, a goal and a result."""
@@ -4886,7 +5447,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/launches.py`
 
-`Launch Planner` - the run-up, the launch day and the follow-through. *(120 lines)*
+*120 lines · 1 function*
+
+> `Launch Planner` - the run-up, the launch day and the follow-through.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Launch Planner').
 
 ````python
 """`Launch Planner` - the run-up, the launch day and the follow-through."""
@@ -5013,7 +5582,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/seasonal.py`
 
-`Seasonal Planner` - holidays, awareness days and seasonal moments. *(74 lines)*
+*74 lines · 1 function*
+
+> `Seasonal Planner` - holidays, awareness days and seasonal moments.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Seasonal Planner').
 
 ````python
 """`Seasonal Planner` - holidays, awareness days and seasonal moments."""
@@ -5094,7 +5671,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/influencers.py`
 
-`Influencers` - outreach, deliverables, fees and what came back. *(115 lines)*
+*115 lines · 1 function*
+
+> `Influencers` - outreach, deliverables, fees and what came back.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Influencers').
 
 ````python
 """`Influencers` - outreach, deliverables, fees and what came back."""
@@ -5216,7 +5801,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/ugc.py`
 
-`UGC Tracker` - customer content, permission and where you reposted it. *(100 lines)*
+*100 lines · 1 function*
+
+> `UGC Tracker` - customer content, permission and where you reposted it.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('UGC Tracker').
 
 ````python
 """`UGC Tracker` - customer content, permission and where you reposted it."""
@@ -5323,7 +5916,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/repurposing.py`
 
-`Repurposing` - one good post, used five more times. *(89 lines)*
+*89 lines · 1 function*
+
+> `Repurposing` - one good post, used five more times.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Repurposing').
 
 ````python
 """`Repurposing` - one good post, used five more times."""
@@ -5419,7 +6020,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/competitors.py`
 
-`Competitors` - what the people in your niche are doing. *(82 lines)*
+*82 lines · 1 function*
+
+> `Competitors` - what the people in your niche are doing.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Competitors').
 
 ````python
 """`Competitors` - what the people in your niche are doing."""
@@ -5508,7 +6117,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/trends.py`
 
-`Trends` - sounds, formats and topics worth jumping on quickly. *(85 lines)*
+*85 lines · 1 function*
+
+> `Trends` - sounds, formats and topics worth jumping on quickly.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Trends').
 
 ````python
 """`Trends` - sounds, formats and topics worth jumping on quickly."""
@@ -5600,7 +6217,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/assets.py`
 
-`Assets` - the creative library: photos, clips, templates, thumbnails. *(92 lines)*
+*92 lines · 1 function*
+
+> `Assets` - the creative library: photos, clips, templates, thumbnails.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Assets').
 
 ````python
 """`Assets` - the creative library: photos, clips, templates, thumbnails."""
@@ -5699,7 +6324,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/team.py`
 
-`Team` - who does what, and how much of it. *(91 lines)*
+*91 lines · 1 function*
+
+> `Team` - who does what, and how much of it.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Team').
 
 ````python
 """`Team` - who does what, and how much of it."""
@@ -5797,7 +6430,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/tasks.py`
 
-`Tasks` - the jobs behind the posts. *(71 lines)*
+*71 lines · 1 function*
+
+> `Tasks` - the jobs behind the posts.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Tasks').
 
 ````python
 """`Tasks` - the jobs behind the posts."""
@@ -5875,7 +6516,19 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/compliance.py`
 
-`Compliance` - the legal and quality checks, written out as a list. *(155 lines)*
+*155 lines · 2 functions*
+
+> `Compliance` - the legal and quality checks, written out as a list.
+>
+> The checks themselves are part of the product, so they are written onto
+> the sheet whether or not the demo data is switched on.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+| `decorate(sheet, fmts, cfg, reg)` | Write the standard checklist (it is content, not demo data) |
+
+**Module constants:** `NAME` ('Compliance'), `CHECKS` (30 items).
 
 ````python
 """`Compliance` - the legal and quality checks, written out as a list.
@@ -6043,7 +6696,20 @@ Where the numbers go in: monthly account analytics, per post performance, tests,
 
 ### `social_media_spreadsheet/sheets/analytics.py`
 
-`Analytics` - the monthly numbers you copy from each platform. *(170 lines)*
+*170 lines · 2 functions*
+
+> `Analytics` - the monthly numbers you copy from each platform.
+>
+> One row per account per month.  This is the only place account level
+> numbers are typed; every dashboard, report and growth chart reads them
+> from here.
+
+| Defines | What it does |
+|---------|--------------|
+| `_int(hi)` |  |
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Analytics').
 
 ````python
 """`Analytics` - the monthly numbers you copy from each platform.
@@ -6220,7 +6886,21 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/performance.py`
 
-`Performance` - the numbers for one individual post. *(171 lines)*
+*171 lines · 2 functions*
+
+> `Performance` - the numbers for one individual post.
+>
+> Type the content ID and the metrics; the title, platform, pillar, campaign
+> and date are pulled from the Content Calendar, and the rates are worked
+> out for you.  This is the table the top-content lists, the pillar
+> comparison and the platform planners all read.
+
+| Defines | What it does |
+|---------|--------------|
+| `_int(hi)` |  |
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Performance').
 
 ````python
 """`Performance` - the numbers for one individual post.
@@ -6398,7 +7078,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/ab_tests.py`
 
-`A/B Tests` - change one thing, measure it, keep the winner. *(112 lines)*
+*112 lines · 1 function*
+
+> `A/B Tests` - change one thing, measure it, keep the winner.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('AB Tests').
 
 ````python
 """`A/B Tests` - change one thing, measure it, keep the winner."""
@@ -6517,7 +7205,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/ads.py`
 
-`Ads` - paid promotion, what it cost and what it brought back. *(124 lines)*
+*124 lines · 1 function*
+
+> `Ads` - paid promotion, what it cost and what it brought back.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Ads').
 
 ````python
 """`Ads` - paid promotion, what it cost and what it brought back."""
@@ -6648,7 +7344,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/goals.py`
 
-`Goals` - the handful of numbers you are actually trying to move. *(116 lines)*
+*116 lines · 1 function*
+
+> `Goals` - the handful of numbers you are actually trying to move.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Goals').
 
 ````python
 """`Goals` - the handful of numbers you are actually trying to move."""
@@ -6771,7 +7475,15 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/budget.py`
 
-`Budget` - what social media costs you, month by month. *(90 lines)*
+*90 lines · 1 function*
+
+> `Budget` - what social media costs you, month by month.
+
+| Defines | What it does |
+|---------|--------------|
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Budget').
 
 ````python
 """`Budget` - what social media costs you, month by month."""
@@ -6874,7 +7586,25 @@ The tabs that read the registers: the hidden calculation engine, the two dashboa
 
 ### `social_media_spreadsheet/sheets/calc.py`
 
-`Calc` - hidden helper sheet. *(336 lines)*
+*336 lines · 3 functions*
+
+> `Calc` - hidden helper sheet.
+>
+> The 2007-2016 formula set has no SORT or FILTER, so the twelve month trend
+> series, the platform and pillar breakdowns and the "top ten" tables are
+> pre-computed here with plain SUMIFS / COUNTIFS and then pulled into the
+> dashboards and reports with LARGE + INDEX/MATCH.
+>
+> Nothing here needs touching: the tab is hidden and every cell is a locked
+> formula.
+
+| Defines | What it does |
+|---------|--------------|
+| `_mirror(sheet, key)` |  |
+| `_from_list(name)` |  |
+| `spec(cfg)` |  |
+
+**Module constants:** `NAME` ('Calc').
 
 ````python
 """
@@ -7217,7 +7947,16 @@ def spec(cfg: Config) -> SheetSpec:
 
 ### `social_media_spreadsheet/sheets/dashboard.py`
 
-`Dashboard` - the one page view of the month. *(375 lines)*
+*375 lines · 2 functions*
+
+> `Dashboard` - the one page view of the month.
+
+| Defines | What it does |
+|---------|--------------|
+| `_calc(key, row)` |  |
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Dashboard'), `LAST_COL` (17), `FIRST_CALC_ROW` (5), `MONTH_ROWS` (12).
 
 ````python
 """`Dashboard` - the one page view of the month."""
@@ -7599,7 +8338,17 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/annual.py`
 
-`Annual Dashboard` - the whole year on one page. *(348 lines)*
+*348 lines · 3 functions*
+
+> `Annual Dashboard` - the whole year on one page.
+
+| Defines | What it does |
+|---------|--------------|
+| `_calc(key, row)` |  |
+| `_quarter(metric, first_month)` | Sum three month rows of the Calc month series |
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Annual Dashboard'), `LAST_COL` (17), `FIRST_CALC_ROW` (5), `MONTH_ROWS` (12).
 
 ````python
 """`Annual Dashboard` - the whole year on one page."""
@@ -7954,7 +8703,22 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/month_view.py`
 
-`Month View` - the calendar as a calendar: six weeks across seven days. *(169 lines)*
+*169 lines · 2 functions*
+
+> `Month View` - the calendar as a calendar: six weeks across seven days.
+>
+> Excel 2010 has no FILTER, so each day cell finds its posts with a trick:
+> the Content Calendar carries a hidden ``day_key`` (the date plus a tiny
+> fraction of the row number).  Because that key sorts by date, the n-th
+> post on a given day is ``SMALL(day_key, COUNTIF(day_key,"<"&day) + n)``,
+> which needs no array formulas at all.
+
+| Defines | What it does |
+|---------|--------------|
+| `_nth(day_cell, n, column)` | Formula for the n-th post on `day_cell`, pulling `column` |
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Month View'), `DAYS` (7), `WEEKS` (6), `PER_DAY` (3), `COL_WIDTH` (19.0), `LAST_COL` (DAYS - 1).
 
 ````python
 """`Month View` - the calendar as a calendar: six weeks across seven days.
@@ -8130,7 +8894,15 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/workflow.py`
 
-`Workflow` - the production pipeline: what is where, and what is late. *(204 lines)*
+*204 lines · 1 function*
+
+> `Workflow` - the production pipeline: what is where, and what is late.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Workflow'), `LAST_COL` (15), `FIRST_CALC_ROW` (5), `STAGES` (9 items).
 
 ````python
 """`Workflow` - the production pipeline: what is where, and what is late."""
@@ -8341,7 +9113,15 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/brand_voice.py`
 
-`Brand Voice` - how the brand sounds, looks and behaves online. *(165 lines)*
+*165 lines · 1 function*
+
+> `Brand Voice` - how the brand sounds, looks and behaves online.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Brand Voice'), `LAST_COL` (9), `BLOCKS` (6 items).
 
 ````python
 """`Brand Voice` - how the brand sounds, looks and behaves online."""
@@ -8513,7 +9293,15 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/reports.py`
 
-`Reports` - pick two dates, print the result or send it to a client. *(267 lines)*
+*267 lines · 1 function*
+
+> `Reports` - pick two dates, print the result or send it to a client.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Reports'), `LAST_COL` (13), `FIRST_CALC_ROW` (5).
 
 ````python
 """`Reports` - pick two dates, print the result or send it to a client."""
@@ -8787,7 +9575,15 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/start_here.py`
 
-`Start Here` - the welcome page and the six step set-up. *(176 lines)*
+*176 lines · 1 function*
+
+> `Start Here` - the welcome page and the six step set-up.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Start Here'), `LAST_COL` (11), `STEPS` (6 items), `TABS` (37 items).
 
 ````python
 """`Start Here` - the welcome page and the six step set-up."""
@@ -8970,7 +9766,22 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/printables.py`
 
-The print-ready tabs: a single content brief and a weekly plan. *(271 lines)*
+*271 lines · 5 functions*
+
+> The print-ready tabs: a single content brief and a weekly plan.
+>
+> Both are driven by a drop down at the top of the page, so you pick the
+> post (or the week) and press print.
+
+| Defines | What it does |
+|---------|--------------|
+| `_pick(sheet, fmts, label, list_name, define_as, hint, default)` | Drop down selector on row 1 (it sits outside the print area) |
+| `_line(sheet, fmts, row, label, formula, style, label_cols, value_cols, height)` |  |
+| `_blank_box(sheet, fmts, row, label, lines)` |  |
+| `build_brief(book, fmts, cfg, reg)` |  |
+| `build_week(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `BRIEF_SHEET` ('Print Brief'), `WEEK_SHEET` ('Print Week'), `LAST_COL` (7).
 
 ````python
 """The print-ready tabs: a single content brief and a weekly plan.
@@ -9248,7 +10059,15 @@ def build_week(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `social_media_spreadsheet/sheets/help_tab.py`
 
-`Help` - how everything works, what every metric means, and the limits. *(241 lines)*
+*241 lines · 1 function*
+
+> `Help` - how everything works, what every metric means, and the limits.
+
+| Defines | What it does |
+|---------|--------------|
+| `build(book, fmts, cfg, reg)` |  |
+
+**Module constants:** `NAME` ('Help'), `LAST_COL` (11), `HOW_IT_FITS` (4 items), `FAQ` (15 items), `METRICS` (14 items), `TROUBLE` (8 items), `LIMITS` (6 items).
 
 ````python
 """`Help` - how everything works, what every metric means, and the limits."""
@@ -9502,7 +10321,26 @@ Not needed to build the workbook - these are the checks that keep it honest. The
 
 ### `tools/validate_social_workbook.py`
 
-Static checks on a generated Social Media Planner workbook. *(297 lines)*
+*297 lines · 3 functions*
+
+> Static checks on a generated Social Media Planner workbook.
+>
+> Run it with any Python that has openpyxl installed::
+>
+>     python tools/validate_social_workbook.py output/planner.xlsx
+>
+> It never opens Excel - it parses the XML and reports anything that would
+> break for a buyer: unresolved template tokens, formulas pointing at the
+> wrong sheet, defined names that do not exist, missing sheet protection,
+> formula cells that are not locked, and input cells that are.
+
+| Defines | What it does |
+|---------|--------------|
+| `_colnum(ref)` |  |
+| `check_raw_xml(path)` | Overlapping merges and stray hyperlinks - Excel calls these corrupt |
+| `check(path)` |  |
+
+**Module constants:** `FUNCTION_RE` (re.compile(...)), `NAME_RE` (re.compile(...)), `BARE_COL_RE` (re.compile(...)), `KNOWN_FUNCTIONS` ({'IF', 'IFERROR', 'SUM', 'SUMIF', 'SUMIFS', 'COUNT', 'COU...), `MODERN_ONLY` ({'XLOOKUP', 'IFS', 'MAXIFS', 'MINIFS', 'TEXTJOIN', 'CONCA...).
 
 ````python
 """Static checks on a generated Social Media Planner workbook.
@@ -9806,7 +10644,27 @@ if __name__ == "__main__":
 
 ### `tools/check_social_sample.py`
 
-Cross-check the example records in a generated social media workbook. *(209 lines)*
+*209 lines · 5 functions*
+
+> Cross-check the example records in a generated social media workbook.
+>
+> The demo data has to join up, otherwise the dashboards open full of zeros
+> and the lookup columns fill with "Not found". This reads the literal
+> values out of the finished file and makes sure every content ID, caption
+> name, hashtag group, asset ID, campaign, pillar, persona, account and
+> owner points at a record that really exists.
+>
+>     python tools/check_social_sample.py output/test.xlsx
+
+| Defines | What it does |
+|---------|--------------|
+| `headers(ws, header_row)` |  |
+| `column_values(ws, header, header_row)` | Every non-empty literal value under the given header |
+| `id_range(ws, id_header, name_header, header_row)` | How many example rows a register holds (its IDs are formulas) |
+| `check(path)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `HEADER_ROW` (4).
 
 ````python
 """Cross-check the example records in a generated social media workbook.
@@ -10022,7 +10880,46 @@ if __name__ == "__main__":
 
 ### `tools/recalc_check.py`
 
-Really calculate every formula in a generated workbook and report any cell that ends up as an Excel error (#REF!, #DIV/0!, #VALUE! ...). *(216 lines)*
+*216 lines · 4 functions*
+
+> Really calculate every formula in a generated workbook and report any
+> cell that ends up as an Excel error (#REF!, #DIV/0!, #VALUE! ...).
+>
+> `validate_workbook.py` reads the file; this one *runs* it.  It loads the
+> workbook into the `formulas` calculation engine, evaluates the whole
+> dependency graph and then looks at the answer in every formula cell, so a
+> formula that parses perfectly but divides by zero on an empty row is still
+> caught.
+>
+>     pip install formulas openpyxl
+>     python tools/recalc_check.py "output/Pet Sitting Business Spreadsheet.xlsx"
+>
+> Notes
+> -----
+> * The engine cannot resolve `OFFSET()` based defined names, so a working
+>   copy of the file is made first with those names flattened to plain
+>   ranges.  The copy is a test artefact - the real workbook keeps its
+>   dynamic names and is never touched.
+> * Only cells that actually hold a formula are judged, so help text that
+>   merely mentions "#N/A" is not mistaken for a broken formula.
+> * The engine is hungry: a full-size 400-row build is around 50,000
+>   formulas and wants several GB of memory.  Check a smaller build
+>   instead - the formulas are identical, there are just fewer rows of
+>   them:
+>
+>       python build_pet_sitting_workbook.py --rows 120 -o /tmp/small.xlsx
+>       python tools/recalc_check.py /tmp/small.xlsx
+>
+>   Pass --force to run it on a full-size file anyway.
+
+| Defines | What it does |
+|---------|--------------|
+| `flatten_dynamic_names(src, dst)` | Save a copy of *src* at *dst* with OFFSET names turned into ranges |
+| `formula_cells(path)` | `{(SHEET NAME upper, coordinate)}` for every cell holding a formula |
+| `cell_text(value)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `BIG` (25000), `ERROR_TEXT` (re.compile(...)), `DYNAMIC_NAME` (re.compile(...)).
 
 ````python
 """Really calculate every formula in a generated workbook and report any
@@ -10245,7 +11142,33 @@ if __name__ == "__main__":
 
 ### `tools/export_source_md.py`
 
-Write every source file of a generator into one markdown document. *(351 lines)*
+*732 lines · 10 functions*
+
+> Write every source file of a generator into one markdown document.
+>
+>     python tools/export_source_md.py                   # -> SOURCE_CODE.md
+>     python tools/export_source_md.py --product social  # -> SOURCE_CODE_SOCIAL.md
+>     python tools/export_source_md.py -o /tmp/src.md
+>
+> Handy when the code has to travel somewhere that is not a git checkout:
+> one file, every module in reading order, each in a fenced block with its
+> real path above it, plus a short description taken from the module's own
+> docstring so the two can never disagree.
+
+| Defines | What it does |
+|---------|--------------|
+| `outline(path)` | `[(kind, name, note)]` for the classes, functions and constants |
+| `describe_value(node)` | A short, human description of a module level constant |
+| `first_sentence(text)` |  |
+| `blurb(path)` | First sentence of the module docstring, as a one line description |
+| `full_docstring(path)` |  |
+| `anchor(heading)` |  |
+| `tab_table(product)` | A row per tab: order, name, kind, module, columns, rows |
+| `data_dictionary(product)` | One table per register: every column, its type and where it comes from |
+| `file_table(sections)` |  |
+| `main(argv)` |  |
+
+**Module constants:** `ROOT` (os.path.dirname(...)), `SHARED_TOOLS` (2 items), `PET_SECTIONS` (5 items), `PET` (9 entries), `SOCIAL_SECTIONS` (7 items), `SOCIAL` (9 entries), `PRODUCTS` (2 entries), `ARCHITECTURE` ('Everything here is plain Python writing a `.xlsx` file t...).
 
 ````python
 """Write every source file of a generator into one markdown document.
@@ -10345,6 +11268,10 @@ PET_SECTIONS = [
 ]
 
 PET = {
+    "package": "pet_sitting_spreadsheet",
+    "builder": "build_pet_sitting_workbook.py",
+    "doc": "README.md",
+    "tabs": 27,
     "title": "Pet Sitting & Dog Walking Business Spreadsheet",
     "subtitle": ("Complete source code of the generator that writes the "
                  "`.xlsx` product."),
@@ -10477,6 +11404,10 @@ SOCIAL_SECTIONS = [
 ]
 
 SOCIAL = {
+    "package": "social_media_spreadsheet",
+    "builder": "build_social_media_workbook.py",
+    "doc": "README_SOCIAL.md",
+    "tabs": 43,
     "title": "Social Media Content Calendar & Analytics Planner",
     "subtitle": ("Complete source code of the generator that writes the "
                  "`.xlsx` product."),
@@ -10519,14 +11450,192 @@ SOCIAL = {
 PRODUCTS = {"pet": PET, "social": SOCIAL}
 
 
-def blurb(path: str) -> str:
-    """First sentence of the module docstring, as a one line description."""
+# ---------------------------------------------------------------------------
+# Chapter 0 - how the generator is put together (same engine for both
+# products, so the prose is written once and filled in per product)
+# ---------------------------------------------------------------------------
+
+ARCHITECTURE = """\
+Everything here is plain Python writing a `.xlsx` file through XlsxWriter.
+There is no template workbook, no copy of an existing file and no manual
+step: the spreadsheet is described in code, and the code is the only
+source of truth for what ends up in a cell.
+
+Two kinds of tab exist.
+
+* A **register** is a data tab — a header row and hundreds of rows under
+  it. Its module exposes `NAME`, a `spec(cfg)` that returns a
+  `SheetSpec` (a list of `Col` objects) and, optionally, a
+  `decorate(sheet, fmts, cfg)` that adds totals or notes underneath the
+  grid. Nothing in a register module writes cells directly.
+* A **page** is a hand-built tab — the dashboards, the reports, the
+  printables, the welcome and help pages. Its module exposes
+  `build(book, fmts, cfg, reg)` and writes with `SheetWriter` helpers:
+  `banner`, `section`, `kpi`, `table_head`, `calc_row`, `note`,
+  `bullets`, `field`, `merge`, `finish`.
+
+### The build pipeline
+
+`{builder}` parses the command line into a `Config`, then
+`{package}.build.build_workbook(path, cfg)` does six things in order:
+
+1. **Open the workbook** and stamp the document properties — title,
+   author, company, keywords and a comment naming the protection
+   password. The author is the same on every generated file.
+2. **Build the `FormatBook`.** Every visual style the product uses is
+   created once, up front: a style (text, date, money, percent, status,
+   link, …) crossed with a mode (`INPUT` cream and unlocked, `CALC` grey
+   and locked, `PLAIN`), plus the page chrome (titles, section bars, KPI
+   tiles, notes) and the conditional formatting palette.
+3. **Register every `SheetSpec` first**, before a single tab is written.
+   This is what lets any sheet refer to any other sheet's columns by
+   name regardless of which tab happens to be written first.
+4. **Write the tabs in `SHEET_ORDER`.** Registers go through
+   `build_register()` — `SheetWriter.grid(spec)` writes widths, formats,
+   headers, formulas, sample rows, drop downs, header comments,
+   conditional formats, the autofilter, frozen panes and the print
+   setup — then the module's `decorate()` runs and the sheet is
+   protected. Pages call their own `build()`.
+5. **Define the live lookup names** (`ContentIDs`, `TeamNames`, …) from
+   the registry. Each is an `OFFSET` range that grows and shrinks with
+   the number of filled rows, so a drop down never shows blanks.
+6. **Hide the `Calc` engine**, activate the first tab and close the file.
+
+### Describing a column
+
+A column is declared once, for one row, with placeholders:
+
+```python
+Col("er", "Engagement rate", 11, "percent",
+    formula='=IFERROR({{engagements}}{{r}}/{{reach}}{{r}},"")',
+    cf=[{{"type": "cell", "criteria": ">=", "value": "=TargetEngagement",
+         "fmt": "good"}}])
+```
+
+`Col` carries the key, the header text, the width, the style, the
+formula template, the data validation, the header comment, the
+conditional formats, whether the column is hidden and which outline
+group it belongs to. `Registry.render()` expands the template per row:
+
+| Token | Becomes |
+|-------|---------|
+| `{{r}}` / `{{r_prev}}` | this row number / the row above |
+| `{{key}}` | the column letter of another column on the same sheet |
+| `{{first}}` / `{{last}}` | the first and last data row of the sheet |
+| `[[Sheet.key]]` | an absolute range on another sheet, e.g. `'Content Calendar'!$G$5:$G$604` |
+| `[[Sheet.key#12]]` | one cell of that column |
+| `[[Sheet.key#]]` | the same row as the formula being written |
+
+Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
+`min_if`, `blank_if`, `safe`, `lookup`, `dynamic_name`, `quote_sheet`.
+
+### The rules every formula obeys
+
+* **Excel 2010 safe.** `SUMIFS`, `COUNTIFS`, `INDEX/MATCH`, `SMALL`,
+  `LARGE`, `RANK`, `EDATE`, `EOMONTH`, `SUMPRODUCT(MAX(...))`. No
+  dynamic arrays, no `XLOOKUP`, no `IFS`, no `AGGREGATE`, nothing that
+  needs Ctrl+Shift+Enter. The file opens in Excel 2010 and later, Google
+  Sheets, LibreOffice and Numbers.
+* **No charts.** The vendored XlsxWriter in this repository cannot write
+  them, so trends are drawn with `add_sparkline`, data bars and
+  three-colour scales — which also survive a Google Sheets import.
+* **Nth-row lookups without array formulas.** Hidden composite key
+  columns (`date + ROW()/100000`) plus `SMALL` and `INDEX/MATCH` answer
+  "the third thing on 14 March" and "the next eight due" with ordinary
+  formulas.
+* **One number, one home.** Nothing is typed into two tabs. Every other
+  appearance of a figure is a formula pointing back at the one place it
+  was entered.
+* **Locked where it matters.** Formula cells are locked, input cells are
+  not, and every sheet is protected with the same password — so the
+  maths cannot be typed over by accident but the cream cells stay open.
+
+### The hidden `Calc` tab
+
+Dashboards do not aggregate the registers directly. A hidden sheet
+pre-computes one row per month, per platform/service, per category and
+per owner, each with its own ranking key, and the visible pages read
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy
+`SUMIFS` work in one place, keeps recalculation predictable, and makes
+every dashboard number traceable to a single cell.
+"""
+
+
+def outline(path: str) -> list:
+    """`[(kind, name, note)]` for the classes, functions and constants."""
     with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
         source = handle.read()
     try:
-        text = ast.get_docstring(ast.parse(source)) or ""
+        tree = ast.parse(source)
     except SyntaxError:                                  # pragma: no cover
-        text = ""
+        return []
+    items = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            args = [a.arg for a in node.args.args]
+            if node.args.vararg:
+                args.append("*" + node.args.vararg.arg)
+            if node.args.kwonlyargs:
+                args.append("*")
+                args += [a.arg for a in node.args.kwonlyargs]
+            if node.args.kwarg:
+                args.append("**" + node.args.kwarg.arg)
+            note = first_sentence(ast.get_docstring(node) or "")
+            items.append(("function", f"{node.name}({', '.join(args)})",
+                          note))
+        elif isinstance(node, ast.ClassDef):
+            bases = []
+            for base in node.bases:
+                try:
+                    bases.append(ast.unparse(base))
+                except Exception:                        # pragma: no cover
+                    pass
+            name = node.name + (f"({', '.join(bases)})" if bases else "")
+            note = first_sentence(ast.get_docstring(node) or "")
+            fields = [n.target.id for n in node.body
+                      if isinstance(n, ast.AnnAssign)
+                      and isinstance(n.target, ast.Name)]
+            if fields and not note:
+                note = "fields: " + ", ".join(fields[:8])
+            items.append(("class", name, note))
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = ([node.target] if isinstance(node, ast.AnnAssign)
+                       else node.targets)
+            for target in targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if not re.match(r"^[A-Z][A-Z0-9_]*$", target.id):
+                    continue
+                items.append(("constant", target.id,
+                              describe_value(node.value)))
+    return items
+
+
+def describe_value(node) -> str:
+    """A short, human description of a module level constant."""
+    if node is None:
+        return ""
+    if isinstance(node, ast.Constant):
+        text = repr(node.value)
+        return text if len(text) < 60 else f"{text[:57]}..."
+    if isinstance(node, (ast.List, ast.Tuple)):
+        return f"{len(node.elts)} items"
+    if isinstance(node, ast.Dict):
+        return f"{len(node.keys)} entries"
+    if isinstance(node, ast.Call):
+        try:
+            name = ast.unparse(node.func)
+        except Exception:                                # pragma: no cover
+            name = "call"
+        return f"{name}(...)"
+    try:
+        text = ast.unparse(node)
+    except Exception:                                    # pragma: no cover
+        return ""
+    return text if len(text) < 60 else f"{text[:57]}..."
+
+
+def first_sentence(text: str) -> str:
     text = " ".join(text.split())
     if not text:
         return ""
@@ -10536,10 +11645,125 @@ def blurb(path: str) -> str:
     return text.strip().rstrip(".")
 
 
+def blurb(path: str) -> str:
+    """First sentence of the module docstring, as a one line description."""
+    with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+        source = handle.read()
+    try:
+        text = ast.get_docstring(ast.parse(source)) or ""
+    except SyntaxError:                                  # pragma: no cover
+        text = ""
+    return first_sentence(text)
+
+
+def full_docstring(path: str) -> str:
+    with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+        source = handle.read()
+    try:
+        return (ast.get_docstring(ast.parse(source)) or "").strip()
+    except SyntaxError:                                  # pragma: no cover
+        return ""
+
+
 def anchor(heading: str) -> str:
     slug = heading.lower()
     slug = re.sub(r"[^\w\s-]", "", slug)
     return re.sub(r"\s+", "-", slug.strip())
+
+
+def tab_table(product: dict) -> list:
+    """A row per tab: order, name, kind, module, columns, rows.
+
+    Imports the product package, so it degrades to nothing if the
+    generator is not importable from where the tool is run.
+    """
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    try:
+        package = __import__(f"{product['package']}.build",
+                             fromlist=["build"])
+        config = __import__(f"{product['package']}.config",
+                            fromlist=["config"])
+    except Exception:                                    # pragma: no cover
+        return []
+    cfg = config.Config()
+    lines = ["| # | Tab | Kind | Written by | Columns | Rows |",
+             "|---|-----|------|------------|--------:|-----:|"]
+    for number, name in enumerate(package.SHEET_ORDER, start=1):
+        module = package.REGISTER_BY_NAME.get(name)
+        if module is not None:
+            spec = module.spec(cfg)
+            # a register is usually a module, but the platform planners
+            # are instances of one shared class
+            where = (getattr(module, "__name__", None)
+                     or type(module).__module__)
+            path = where.replace(".", "/") + ".py"
+            lines.append(f"| {number} | **{name}** | register | "
+                         f"`{path}` | {len(spec.columns)} | {spec.rows} |")
+        else:
+            builder = package.PAGE_BUILDERS.get(name)
+            path = (getattr(builder, "__module__", "")
+                    .replace(".", "/") + ".py")
+            lines.append(f"| {number} | **{name}** | page | `{path}` "
+                         f"| - | - |")
+    return lines
+
+
+def data_dictionary(product: dict) -> list:
+    """One table per register: every column, its type and where it comes
+    from. Generated from the specs themselves, so it cannot drift."""
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    try:
+        package = __import__(f"{product['package']}.build",
+                             fromlist=["build"])
+        config = __import__(f"{product['package']}.config",
+                            fromlist=["config"])
+    except Exception:                                    # pragma: no cover
+        return []
+    cfg = config.Config()
+    lines = []
+    for name in package.SHEET_ORDER:
+        module = package.REGISTER_BY_NAME.get(name)
+        if module is None:
+            continue
+        spec = module.spec(cfg)
+        typed = sum(1 for c in spec.columns if not c.is_formula)
+        lines += [f"#### {spec.name}", ""]
+        if spec.subtitle:
+            lines += [f"{spec.subtitle}", ""]
+        lines += [f"{len(spec.columns)} columns, {spec.rows} rows of "
+                  f"capacity, {typed} of them typed in by hand.", "",
+                  "| Col | Header | Key | Format | Filled by |",
+                  "|-----|--------|-----|--------|-----------|"]
+        for col in spec.columns:
+            source = "formula" if col.is_formula else "you type it"
+            if col.validate:
+                picked = str(col.validate.get("source", "")).lstrip("=")
+                if picked and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", picked):
+                    source = f"drop down `{picked}`"
+                elif not col.is_formula:
+                    source = "you type it (checked)"
+            if col.hidden:
+                source += ", hidden"
+            lines.append(f"| {spec.letter(col.key)} | {col.header} | "
+                         f"`{col.key}` | {col.style} | {source} |")
+        lines.append("")
+    return lines
+
+
+def file_table(sections: list) -> list:
+    lines = ["| File | Lines | What it is |", "|------|------:|------------|"]
+    for _heading, _intro, paths in sections:
+        for path in paths:
+            with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+                count = len(handle.read().splitlines())
+            note = blurb(path) or ""
+            if len(note) > 110:
+                note = note[:107].rsplit(" ", 1)[0] + "..."
+            lines.append(f"| [`{path}`](#{anchor(path)}) | {count:,} | "
+                         f"{note} |")
+    return lines
 
 
 def main(argv=None) -> int:
@@ -10548,21 +11772,51 @@ def main(argv=None) -> int:
                         default="pet",
                         help="which generator to export (default: pet)")
     parser.add_argument("-o", "--output", default=None)
+    parser.add_argument("--plain", action="store_true",
+                        help="just the code, without the architecture "
+                             "chapter and the per file outlines")
     args = parser.parse_args(argv)
 
     product = PRODUCTS[args.product]
     sections = product["sections"]
+    detailed = not args.plain
 
     lines = [f"# {product['title']} — source code", "",
              product["subtitle"], ""]
     lines += product["intro"]
     lines += ["", "---", "", "## Contents", ""]
 
+    if detailed:
+        lines += ["* [0. How it is put together](#0-how-it-is-put-together)",
+                  "  * [The build pipeline](#the-build-pipeline)",
+                  "  * [Describing a column](#describing-a-column)",
+                  "  * [The rules every formula obeys]"
+                  "(#the-rules-every-formula-obeys)",
+                  "  * [The hidden `Calc` tab](#the-hidden-calc-tab)",
+                  "  * [Every tab at a glance](#every-tab-at-a-glance)",
+                  "  * [Every file at a glance](#every-file-at-a-glance)"]
     for heading, _intro, paths in sections:
         lines.append(f"* [{heading}](#{anchor(heading)})")
         for path in paths:
             lines.append(f"  * [`{path}`](#{anchor(path)})")
+    if detailed:
+        lines.append("* [Appendix A. Data dictionary]"
+                     "(#appendix-a-data-dictionary)")
     lines += ["", "---", ""]
+
+    if detailed:
+        lines += ["## 0. How it is put together", ""]
+        lines += [ARCHITECTURE.format(builder=product["builder"],
+                                      package=product["package"]), ""]
+        tabs = tab_table(product)
+        if tabs:
+            lines += ["### Every tab at a glance", "",
+                      f"{product['tabs']} tabs in the order they appear in "
+                      f"the finished workbook. \"Rows\" is the capacity of "
+                      f"a register at the default `--rows` setting.", ""]
+            lines += tabs + [""]
+        lines += ["### Every file at a glance", ""]
+        lines += file_table(sections) + ["", "---", ""]
 
     total = 0
     for heading, intro, paths in sections:
@@ -10573,18 +11827,68 @@ def main(argv=None) -> int:
                 code = handle.read().rstrip("\n")
             count = len(code.splitlines())
             total += count
-            note = blurb(path)
             lines.append(f"### `{path}`")
             lines.append("")
-            if note:
-                lines.append(f"{note}. *({count} lines)*")
+            if detailed:
+                items = outline(path)
+                classes = sum(1 for kind, _n, _d in items
+                              if kind == "class")
+                functions = sum(1 for kind, _n, _d in items
+                                if kind == "function")
+                stats = [f"{count:,} lines"]
+                if classes:
+                    stats.append(f"{classes} class"
+                                 f"{'es' if classes > 1 else ''}")
+                if functions:
+                    stats.append(f"{functions} function"
+                                 f"{'s' if functions > 1 else ''}")
+                lines += [f"*{' · '.join(stats)}*", ""]
+                doc = full_docstring(path)
+                if doc:
+                    lines += ["> " + line if line else ">"
+                              for line in doc.splitlines()]
+                    lines.append("")
+                named = [item for item in items if item[0] != "constant"]
+                constants = [item for item in items if item[0] == "constant"]
+                if named:
+                    lines += ["| Defines | What it does |",
+                              "|---------|--------------|"]
+                    for kind, name, note in named:
+                        tag = "class " if kind == "class" else ""
+                        lines.append(f"| `{tag}{name}` | {note} |")
+                    lines.append("")
+                if constants:
+                    text = ", ".join(f"`{name}` ({note})" if note
+                                     else f"`{name}`"
+                                     for _k, name, note in constants[:14])
+                    more = (f" and {len(constants) - 14} more"
+                            if len(constants) > 14 else "")
+                    lines += [f"**Module constants:** {text}{more}.", ""]
             else:
-                lines.append(f"*({count} lines)*")
+                note = blurb(path)
+                if note:
+                    lines.append(f"{note}. *({count} lines)*")
+                else:
+                    lines.append(f"*({count} lines)*")
+                lines.append("")
             # four backticks, so a fence inside a docstring cannot
             # close the block early
-            lines += ["", "````python", code, "````", ""]
+            lines += ["````python", code, "````", ""]
         lines.append("---")
         lines.append("")
+
+    if detailed:
+        dictionary = data_dictionary(product)
+        if dictionary:
+            lines += ["## Appendix A. Data dictionary", "",
+                      "Every column of every register tab, straight from "
+                      "the specs that build them: the Excel column letter, "
+                      "the header a buyer sees, the key formulas use, the "
+                      "number format and whether the cell is typed in, "
+                      "chosen from a drop down or calculated. Pages "
+                      "(dashboards, reports, printables) are not listed - "
+                      "they have no fixed grid.", ""]
+            lines += dictionary + ["---", ""]
 
     lines += [f"*{total:,} lines of Python in "
               f"{sum(len(p) for _h, _i, p in sections)} files.*", ""]
@@ -10603,7 +11907,28 @@ if __name__ == "__main__":
 
 ### `tools/make_download_zip.py`
 
-Pack a generator into a single zip people can download and run. *(182 lines)*
+*182 lines · 2 functions*
+
+> Pack a generator into a single zip people can download and run.
+>
+>     python tools/make_download_zip.py
+>     python tools/make_download_zip.py --product social
+>
+> Writes `download/<product>-source.zip` containing the generator, the
+> quality tools, the documentation and a `requirements.txt`, all under one
+> folder so it unpacks tidily.
+>
+> The vendored copy of XlsxWriter in this repository is deliberately left
+> out: the zip is meant to be unpacked anywhere and run against a normal
+> `pip install XlsxWriter`.  Timestamps are fixed so rebuilding the zip
+> without changing any source produces exactly the same bytes.
+
+| Defines | What it does |
+|---------|--------------|
+| `gather(product)` | `[(archive name, text)]` for everything that goes in the zip |
+| `main(argv)` |  |
+
+**Module constants:** `ROOT` (os.path.dirname(...)), `STAMP` (6 items), `SHARED_TOOLS` (3 items), `REQUIREMENTS` ('# The generator needs one package.\nXlsxWriter>=3.0\n\n#...), `PET_HOW_TO_RUN` ('Pet Sitting & Dog Walking Business Spreadsheet\n========...), `SOCIAL_HOW_TO_RUN` ('Social Media Content Calendar & Analytics Planner\n=====...), `PRODUCTS` (2 entries).
 
 ````python
 """Pack a generator into a single zip people can download and run.
@@ -10792,4 +12117,1179 @@ if __name__ == "__main__":
 
 ---
 
-*10,260 lines of Python in 56 files.*
+## Appendix A. Data dictionary
+
+Every column of every register tab, straight from the specs that build them: the Excel column letter, the header a buyer sees, the key formulas use, the number format and whether the cell is typed in, chosen from a drop down or calculated. Pages (dashboards, reports, printables) are not listed - they have no fixed grid.
+
+#### Accounts
+
+One row per account. The grey columns count your posts, pull the reach and engagement from the Analytics tab and tell you when a profile needs attention.
+
+30 columns, 30 rows of capacity, 19 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Platform | `platform` | text | drop down `PlatformList` |
+| C | Account / profile name | `account` | text | you type it |
+| D | Username / handle | `handle` | text | you type it |
+| E | Profile URL | `url` | link | you type it |
+| F | Account type | `type` | text | drop down `AccountTypeList` |
+| G | Account owner | `owner` | text | drop down `TeamNames` |
+| H | What this account is for | `purpose` | wrap | you type it |
+| I | Primary audience | `audience` | text | you type it |
+| J | Followers today | `followers` | int | you type it (checked) |
+| K | Account started | `launched` | date | you type it (checked) |
+| L | Posts per week target | `target_per_week` | int | you type it (checked) |
+| M | Bio / description checked | `bio_ok` | flag | drop down `YesNoList` |
+| N | Profile picture on brand | `photo_ok` | flag | drop down `YesNoList` |
+| O | Cover image current | `cover_ok` | flag | drop down `YesNoList` |
+| P | Website link works | `link_ok` | flag | drop down `YesNoList` |
+| Q | Contact details correct | `contact_ok` | flag | drop down `YesNoList` |
+| R | Platform branding done | `branding_ok` | flag | drop down `YesNoList` |
+| S | Profile score | `profile_score` | percent | formula |
+| T | Access & responsibility notes | `access` | wrap | you type it |
+| U | Posts this year | `posts_year` | int | formula |
+| V | Published | `published_year` | int | formula |
+| W | Reach this year | `reach_year` | int | formula |
+| X | Engagements | `engagements_year` | int | formula |
+| Y | Engagement rate | `er_year` | percent | formula |
+| Z | Follower growth | `growth_year` | int | formula |
+| AA | Last published | `last_post` | date | formula |
+| AB | Days since | `days_quiet` | int | formula |
+| AC | Action needed | `alert` | status | formula |
+| AD | Notes | `notes` | wrap | you type it |
+
+#### Audience Personas
+
+Three or four personas is plenty. Every post on the calendar can be pointed at one of them, and the grey columns show whether you are actually making content for each.
+
+26 columns, 12 rows of capacity, 19 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Persona name | `name` | text | you type it |
+| C | Age range | `age` | text | you type it |
+| D | Location / market | `location` | text | you type it |
+| E | Interests & hobbies | `interests` | wrap | you type it |
+| F | Main challenge / pain point | `pain` | wrap | you type it |
+| G | What they want | `goal` | wrap | you type it |
+| H | Buying motivation | `motivation` | wrap | you type it |
+| I | Common objection | `objection` | wrap | you type it |
+| J | Favourite platform | `platform` | text | drop down `PlatformList` |
+| K | Favourite format | `format` | text | drop down `FormatList` |
+| L | Journey stage | `stage` | text | drop down `FunnelStageList` |
+| M | How they engage | `engagement` | wrap | you type it |
+| N | Question they always ask | `faq` | wrap | you type it |
+| O | Words they use | `language` | wrap | you type it |
+| P | Awareness content idea | `awareness_idea` | wrap | you type it |
+| Q | Consideration idea | `consideration_idea` | wrap | you type it |
+| R | Conversion idea | `conversion_idea` | wrap | you type it |
+| S | Retention idea | `retention_idea` | wrap | you type it |
+| T | Posts planned | `posts` | int | formula |
+| U | Published | `published` | int | formula |
+| V | Ideas waiting | `ideas` | int | formula |
+| W | Captions written | `captions` | int | formula |
+| X | Share of the plan | `share` | percent | formula |
+| Y | Action needed | `alert` | status | formula |
+| Z | Notes | `notes` | wrap | you type it |
+
+#### Content Pillars
+
+Set the mix you want, then watch the grey columns tell you the mix you actually published.
+
+19 columns, 20 rows of capacity, 8 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Pillar name | `name` | text | you type it |
+| C | Target share of posts | `target` | percent | you type it (checked) |
+| D | What this pillar is for | `purpose` | wrap | you type it |
+| E | Main objective | `objective` | text | drop down `ObjectiveList` |
+| F | Usual format | `format` | text | drop down `FormatList` |
+| G | Mainly for | `persona` | text | drop down `PersonaNames` |
+| H | Example post ideas | `examples` | wrap | you type it |
+| I | Posts planned | `planned` | int | formula |
+| J | Published | `published` | int | formula |
+| K | Actual share | `actual` | percent | formula |
+| L | Off target by | `variance` | percent | formula |
+| M | Reach | `reach` | int | formula |
+| N | Engagements | `engagements` | int | formula |
+| O | Engagement rate | `er` | percent | formula |
+| P | Clicks | `clicks` | int | formula |
+| Q | Best post | `best` | text | formula |
+| R | Action needed | `alert` | status | formula |
+| S | Notes | `notes` | wrap | you type it |
+
+#### Content Calendar
+
+One row per post, on any platform, for the whole year. Filter by month, platform, pillar or status - the grey columns keep the deadlines, links and results up to date for you.
+
+40 columns, 600 rows of capacity, 19 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Publish date | `date` | date | you type it (checked) |
+| C | Time slot | `slot` | text | drop down `TimeSlotList` |
+| D | Month | `month` | text | formula |
+| E | Week | `week` | int | formula |
+| F | Day | `weekday` | text | formula |
+| G | Platform | `platform` | text | drop down `PlatformList` |
+| H | Content title | `title` | text | you type it |
+| I | What it is about | `description` | wrap | you type it |
+| J | Content pillar | `pillar` | text | drop down `PillarNames` |
+| K | Format | `format` | text | drop down `FormatList` |
+| L | Campaign | `campaign` | text | drop down `CampaignNames` |
+| M | Objective | `objective` | text | drop down `ObjectiveList` |
+| N | Funnel stage | `funnel` | text | drop down `FunnelStageList` |
+| O | Written for | `persona` | text | drop down `PersonaNames` |
+| P | Caption (from the bank) | `caption` | text | drop down `CaptionTitles` |
+| Q | Caption ready | `caption_check` | status | formula |
+| R | Hashtag group | `hashtag_group` | text | you type it |
+| S | Tags in group | `hashtag_count` | int | formula |
+| T | Creative asset | `asset` | text | drop down `AssetIDs` |
+| U | Asset approved | `asset_check` | status | formula |
+| V | Call to action | `cta` | text | drop down `CTAList` |
+| W | Owner | `owner` | text | drop down `TeamNames` |
+| X | Status | `status` | status | drop down `ContentStatusList` |
+| Y | Draft due | `draft_due` | date | formula |
+| Z | Approval due | `approve_due` | date | formula |
+| AA | Days to go | `days_to_go` | int | formula |
+| AB | Published link | `url` | link | you type it |
+| AC | Live? | `published` | status | formula |
+| AD | Reach | `reach` | int | formula |
+| AE | Engagements | `engagements` | int | formula |
+| AF | Engagement rate | `er` | percent | formula |
+| AG | Clicks | `clicks` | int | formula |
+| AH | Repurposed | `repurposed` | int | formula |
+| AI | Day key | `day_key` | number | formula, hidden |
+| AJ | Queue key | `queue_key` | number | formula, hidden |
+| AK | Late key | `late_key` | number | formula, hidden |
+| AL | Duplicate check | `dup_check` | status | formula |
+| AM | Action needed | `alert` | status | formula |
+| AN | Notes | `notes` | wrap | you type it |
+
+#### Idea Bank
+
+Never start from a blank page again. Score each idea, then move the best ones onto the calendar and paste the content ID back here.
+
+31 columns, 300 rows of capacity, 24 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Idea | `title` | text | you type it |
+| C | What it would look like | `description` | wrap | you type it |
+| D | Written for | `persona` | text | drop down `PersonaNames` |
+| E | Problem it solves | `problem` | wrap | you type it |
+| F | Objective | `objective` | text | drop down `ObjectiveList` |
+| G | Content pillar | `pillar` | text | drop down `PillarNames` |
+| H | Best platform | `platform` | text | drop down `PlatformList` |
+| I | Format | `format` | text | drop down `FormatList` |
+| J | Hook / opening line | `hook` | wrap | you type it |
+| K | Key message | `message` | wrap | you type it |
+| L | Call to action | `cta` | text | drop down `CTAList` |
+| M | Where it came from | `source` | text | drop down `IdeaSourceList` |
+| N | Reference link | `url` | link | you type it |
+| O | Seen at (competitor) | `competitor` | text | you type it |
+| P | Related trend | `trend` | text | you type it |
+| Q | Evergreen? | `evergreen` | flag | you type it (checked) |
+| R | Seasonal? | `seasonal` | flag | you type it (checked) |
+| S | Priority score (1-10) | `score` | rating | you type it (checked) |
+| T | Status | `status` | status | drop down `IdeaStatusList` |
+| U | Captured on | `created` | date | you type it (checked) |
+| V | Last reviewed | `reviewed` | date | you type it (checked) |
+| W | Planned for | `planned` | date | you type it (checked) |
+| X | Became content ID | `content` | text | you type it |
+| Y | On the calendar as | `content_title` | text | formula |
+| Z | Publish date | `content_date` | date | formula |
+| AA | Days in the bank | `age` | int | formula |
+| AB | Review by | `review_due` | date | formula |
+| AC | Duplicate check | `dup_check` | status | formula |
+| AD | Action needed | `alert` | status | formula |
+| AE | Notes | `notes` | wrap | you type it |
+
+#### Caption Bank
+
+Write it once, use it again. The length check compares your caption against the platform limit, and the grey columns show how often each caption has been used and how it performed.
+
+29 columns, 200 rows of capacity, 20 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Caption name | `title` | text | you type it |
+| C | Platform | `platform` | text | drop down `PlatformList` |
+| D | Content pillar | `pillar` | text | drop down `PillarNames` |
+| E | Written for | `persona` | text | drop down `PersonaNames` |
+| F | Tone of voice | `tone` | text | drop down `ToneList` |
+| G | Hook (first line) | `hook` | wrap | you type it |
+| H | Body | `body` | wrap | you type it |
+| I | Closing call to action | `cta` | wrap | you type it |
+| J | Full caption | `full` | wrap | you type it |
+| K | Short version | `short` | wrap | you type it |
+| L | Long version | `long` | wrap | you type it |
+| M | CTA type | `cta_type` | text | drop down `CTAList` |
+| N | Emoji guidance | `emojis` | text | you type it |
+| O | Offer mentioned | `offer` | text | you type it |
+| P | Hashtag group | `group` | text | you type it |
+| Q | Reusable? | `reusable` | flag | you type it (checked) |
+| R | Approval | `approval` | status | drop down `ApprovalStatusList` |
+| S | Written on | `created` | date | you type it (checked) |
+| T | Last edited | `edited` | date | you type it (checked) |
+| U | Characters | `chars` | int | formula |
+| V | Platform limit | `limit` | int | formula |
+| W | Length check | `fits` | status | formula |
+| X | Times used | `uses` | int | formula |
+| Y | Last used | `last_used` | date | formula |
+| Z | Average engagement | `avg_er` | percent | formula |
+| AA | Duplicate check | `dup_check` | status | formula |
+| AB | Action needed | `alert` | status | formula |
+| AC | Notes | `notes` | wrap | you type it |
+
+#### Hashtag Bank
+
+Build tested groups of 20-30 tags, keep the keywords next to them for search, and rotate the groups so your posts do not look identical.
+
+21 columns, 300 rows of capacity, 15 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Hashtag | `tag` | text | you type it |
+| C | Type | `type` | text | drop down `HashtagTypeList` |
+| D | Group | `group` | text | you type it |
+| E | Platform | `platform` | text | drop down `PlatformList` |
+| F | Content pillar | `pillar` | text | drop down `PillarNames` |
+| G | Topic | `topic` | text | you type it |
+| H | Keyword / search term | `keyword` | text | you type it |
+| I | Related keywords | `related` | wrap | you type it |
+| J | Search intent | `intent` | text | drop down `SearchIntentList` |
+| K | Competition | `difficulty` | text | drop down `DifficultyList` |
+| L | Posts / search volume | `volume` | int | you type it (checked) |
+| M | Size band | `size` | text | formula |
+| N | Times used (manual) | `uses` | int | you type it (checked) |
+| O | Posts using this group | `posts` | int | formula |
+| P | Last used | `last_used` | date | you type it (checked) |
+| Q | Days rested | `rest_days` | int | formula |
+| R | Banned / flagged? | `banned` | flag | you type it (checked) |
+| S | Duplicate check | `dup_check` | status | formula |
+| T | Action needed | `alert` | status | formula |
+| U | Notes | `notes` | wrap | you type it |
+
+#### Instagram
+
+Grid, reels and stories in one place. Fill in the Instagram specific fields - the title, date and results come from the calendar and the Performance tab.
+
+25 columns, 200 rows of capacity, 11 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Content ID | `content` | text | drop down `ContentIDs` |
+| C | Content title | `title` | text | formula |
+| D | Publish date | `date` | date | formula |
+| E | Pillar | `pillar` | text | formula |
+| F | Status | `status` | status | formula |
+| G | Instagram format | `format` | text | drop down `FormatList` |
+| H | Hook / first slide | `hook` | wrap | you type it |
+| I | Carousel slides | `slides` | int | you type it (checked) |
+| J | Reel length (sec) | `duration` | int | you type it (checked) |
+| K | Cover image / file | `cover` | text | you type it |
+| L | Story sequence | `story_sequence` | wrap | you type it |
+| M | Collab post? | `collab` | flag | you type it (checked) |
+| N | Profile visits | `profile_visits` | int | you type it (checked) |
+| O | Followers gained | `followers_gained` | int | you type it (checked) |
+| P | Reach | `reach` | int | formula |
+| Q | Impressions | `impressions` | int | formula |
+| R | Engagements | `engagements` | int | formula |
+| S | Engagement rate | `er` | percent | formula |
+| T | Saves | `saves` | int | formula |
+| U | Shares | `shares` | int | formula |
+| V | Comments | `comments` | int | formula |
+| W | Clicks | `clicks` | int | formula |
+| X | Action needed | `alert` | status | formula |
+| Y | Notes | `notes` | wrap | you type it |
+
+#### TikTok
+
+Hooks, sounds, scripts and shot lists, plus the watch time and completion rate that decide how far a video travels.
+
+28 columns, 200 rows of capacity, 14 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Content ID | `content` | text | drop down `ContentIDs` |
+| C | Content title | `title` | text | formula |
+| D | Publish date | `date` | date | formula |
+| E | Pillar | `pillar` | text | formula |
+| F | Status | `status` | status | formula |
+| G | First 2 seconds | `hook` | wrap | you type it |
+| H | Sound / audio | `sound` | text | you type it |
+| I | Script outline | `script` | wrap | you type it |
+| J | Shot list | `shots` | wrap | you type it |
+| K | Length (sec) | `duration` | int | you type it (checked) |
+| L | Text on screen | `text_on_screen` | wrap | you type it |
+| M | Cover frame | `cover` | text | you type it |
+| N | Series name | `series` | text | you type it |
+| O | Avg watch time (sec) | `watch_time` | number1 | you type it (checked) |
+| P | Completion rate | `completion` | percent | you type it (checked) |
+| Q | Profile views | `profile_views` | int | you type it (checked) |
+| R | Followers gained | `followers_gained` | int | you type it (checked) |
+| S | Reach | `reach` | int | formula |
+| T | Impressions | `impressions` | int | formula |
+| U | Engagements | `engagements` | int | formula |
+| V | Engagement rate | `er` | percent | formula |
+| W | Saves | `saves` | int | formula |
+| X | Shares | `shares` | int | formula |
+| Y | Comments | `comments` | int | formula |
+| Z | Clicks | `clicks` | int | formula |
+| AA | Action needed | `alert` | status | formula |
+| AB | Notes | `notes` | wrap | you type it |
+
+#### Pinterest
+
+Pins keep working for months, so plan the keyword, the board and the refresh date as carefully as the image.
+
+29 columns, 200 rows of capacity, 15 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Content ID | `content` | text | drop down `ContentIDs` |
+| C | Content title | `title` | text | formula |
+| D | Publish date | `date` | date | formula |
+| E | Pillar | `pillar` | text | formula |
+| F | Status | `status` | status | formula |
+| G | Board | `board` | text | you type it |
+| H | Board link | `board_url` | link | you type it |
+| I | Pin title | `pin_title` | text | you type it |
+| J | Pin description | `pin_description` | wrap | you type it |
+| K | Destination link | `destination` | link | you type it |
+| L | Image file | `image` | text | you type it |
+| M | Size (2:3 is best) | `dimensions` | text | you type it |
+| N | Target keyword | `keyword` | text | you type it |
+| O | Search intent | `intent` | text | drop down `SearchIntentList` |
+| P | Seasonal pin? | `seasonal` | flag | you type it (checked) |
+| Q | Outbound clicks | `outbound_clicks` | int | you type it (checked) |
+| R | Audience growth | `audience_growth` | int | you type it (checked) |
+| S | Refresh / repin on | `refresh_due` | date | you type it |
+| T | Reach | `reach` | int | formula |
+| U | Impressions | `impressions` | int | formula |
+| V | Engagements | `engagements` | int | formula |
+| W | Engagement rate | `er` | percent | formula |
+| X | Saves | `saves` | int | formula |
+| Y | Shares | `shares` | int | formula |
+| Z | Comments | `comments` | int | formula |
+| AA | Clicks | `clicks` | int | formula |
+| AB | Action needed | `alert` | status | formula |
+| AC | Notes | `notes` | wrap | you type it |
+
+#### YouTube
+
+Titles, thumbnails, chapters and the two numbers that drive the algorithm: click through rate and retention.
+
+37 columns, 120 rows of capacity, 21 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Content ID | `content` | text | drop down `ContentIDs` |
+| C | Content title | `title` | text | formula |
+| D | Publish date | `date` | date | formula |
+| E | Pillar | `pillar` | text | formula |
+| F | Status | `status` | status | formula |
+| G | Long or Short | `format` | text | drop down `FormatList` |
+| H | Video title | `title_option` | text | you type it |
+| I | Title length | `title_chars` | int | formula |
+| J | First 15 seconds | `hook` | wrap | you type it |
+| K | Description | `description` | wrap | you type it |
+| L | Script / structure | `script` | wrap | you type it |
+| M | Chapters | `chapters` | wrap | you type it |
+| N | Thumbnail file | `thumbnail` | text | you type it |
+| O | Thumbnail idea | `thumbnail_idea` | wrap | you type it |
+| P | Target keywords | `keywords` | wrap | you type it |
+| Q | Tags | `tags` | wrap | you type it |
+| R | Playlist | `playlist` | text | you type it |
+| S | End screen / cards | `end_screen` | text | you type it |
+| T | Watch time (min) | `watch_time` | number1 | you type it (checked) |
+| U | Avg view (min) | `avg_duration` | number1 | you type it (checked) |
+| V | Audience retention | `retention` | percent | you type it (checked) |
+| W | Thumbnail CTR | `ctr` | percent | you type it (checked) |
+| X | Subscribers gained | `subs_gained` | int | you type it (checked) |
+| Y | Subscribers lost | `subs_lost` | int | you type it (checked) |
+| Z | Net subscribers | `net_subs` | int | formula |
+| AA | Main traffic source | `traffic` | text | you type it |
+| AB | Reach | `reach` | int | formula |
+| AC | Impressions | `impressions` | int | formula |
+| AD | Engagements | `engagements` | int | formula |
+| AE | Engagement rate | `er` | percent | formula |
+| AF | Saves | `saves` | int | formula |
+| AG | Shares | `shares` | int | formula |
+| AH | Comments | `comments` | int | formula |
+| AI | Clicks | `clicks` | int | formula |
+| AJ | Action needed | `alert` | status | formula |
+| AK | Notes | `notes` | wrap | you type it |
+
+#### Facebook
+
+Page posts, groups and events - the place where links still work and your existing customers still hang out.
+
+25 columns, 200 rows of capacity, 11 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Content ID | `content` | text | drop down `ContentIDs` |
+| C | Content title | `title` | text | formula |
+| D | Publish date | `date` | date | formula |
+| E | Pillar | `pillar` | text | formula |
+| F | Status | `status` | status | formula |
+| G | Post format | `format` | text | drop down `FormatList` |
+| H | Audience | `audience` | text | you type it |
+| I | Targeting notes | `targeting` | wrap | you type it |
+| J | Link shared | `link` | link | you type it |
+| K | Posted to a group? | `group_post` | flag | you type it (checked) |
+| L | Linked event | `event` | text | you type it |
+| M | Reactions | `reactions` | int | you type it (checked) |
+| N | Link clicks | `link_clicks` | int | you type it (checked) |
+| O | Page followers gained | `followers_gained` | int | you type it (checked) |
+| P | Reach | `reach` | int | formula |
+| Q | Impressions | `impressions` | int | formula |
+| R | Engagements | `engagements` | int | formula |
+| S | Engagement rate | `er` | percent | formula |
+| T | Saves | `saves` | int | formula |
+| U | Shares | `shares` | int | formula |
+| V | Comments | `comments` | int | formula |
+| W | Clicks | `clicks` | int | formula |
+| X | Action needed | `alert` | status | formula |
+| Y | Notes | `notes` | wrap | you type it |
+
+#### Campaigns
+
+Give every push a name, a window and a budget, then let the grey columns count the posts, pull the results and work out the return.
+
+37 columns, 60 rows of capacity, 21 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Campaign name | `name` | text | you type it |
+| C | Objective | `objective` | text | drop down `ObjectiveList` |
+| D | What it is | `description` | wrap | you type it |
+| E | Product / service | `product` | text | you type it |
+| F | Audience | `audience` | text | drop down `PersonaNames` |
+| G | Key message | `message` | wrap | you type it |
+| H | Platforms | `platforms` | text | you type it |
+| I | Start date | `start` | date | you type it (checked) |
+| J | End date | `end` | date | you type it (checked) |
+| K | Owner | `owner` | text | drop down `TeamNames` |
+| L | Offer / hook | `offer` | text | you type it |
+| M | Landing page | `landing` | link | you type it |
+| N | Call to action | `cta` | text | drop down `CTAList` |
+| O | Tracking link / UTM | `utm` | text | you type it |
+| P | Budget | `budget` | money | you type it (checked) |
+| Q | Spent so far | `spend` | money | you type it (checked) |
+| R | Leads | `leads` | int | you type it (checked) |
+| S | Sales / conversions | `conversions` | int | you type it (checked) |
+| T | Revenue | `revenue` | money | you type it (checked) |
+| U | Status | `status` | status | drop down `CampaignStatusList` |
+| V | Length (days) | `days` | int | formula |
+| W | Posts planned | `posts` | int | formula |
+| X | Published | `published` | int | formula |
+| Y | Reach | `reach` | int | formula |
+| Z | Engagements | `engagements` | int | formula |
+| AA | Engagement rate | `er` | percent | formula |
+| AB | Clicks | `clicks` | int | formula |
+| AC | Budget left | `remaining` | money | formula |
+| AD | Budget used | `budget_used` | percent | formula |
+| AE | Cost per lead | `cpl` | money | formula |
+| AF | Cost per sale | `cpa` | money | formula |
+| AG | Click to sale | `conv_rate` | percent | formula |
+| AH | Return on spend | `roas` | number1 | formula |
+| AI | Revenue less spend | `profit` | money | formula |
+| AJ | Action needed | `alert` | status | formula |
+| AK | Notes | `notes` | wrap | you type it |
+
+#### Launch Planner
+
+Plan the teasing, the launch day and the follow-up as one piece of work, then write down what you would change next time.
+
+32 columns, 40 rows of capacity, 23 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Product / offer | `product` | text | you type it |
+| C | Launch date | `launch` | date | you type it (checked) |
+| D | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| E | Teasing starts | `pre_start` | date | you type it (checked) |
+| F | Follow-up ends | `post_end` | date | you type it (checked) |
+| G | Teaser content | `teaser` | wrap | you type it |
+| H | Announcement content | `announcement` | wrap | you type it |
+| I | Demo / proof content | `demo` | wrap | you type it |
+| J | Benefits to lead with | `benefits` | wrap | you type it |
+| K | Testimonial / social proof | `testimonial` | wrap | you type it |
+| L | Launch offer | `offer` | text | you type it |
+| M | Discount code | `code` | text | you type it |
+| N | Code used | `code_uses` | int | you type it (checked) |
+| O | Last-call reminder | `reminder` | date | you type it (checked) |
+| P | Email sequence | `email` | wrap | you type it |
+| Q | Influencer support | `influencer` | text | drop down `InfluencerNames` |
+| R | Budget | `budget` | money | you type it (checked) |
+| S | Engagements | `engagement` | int | you type it (checked) |
+| T | Leads / waitlist | `leads` | int | you type it (checked) |
+| U | Sales | `sales` | int | you type it (checked) |
+| V | Revenue | `revenue` | money | you type it (checked) |
+| W | Status | `status` | status | drop down `CampaignStatusList` |
+| X | Days to launch | `days_to_go` | int | formula |
+| Y | Phase today | `phase` | text | formula |
+| Z | Teasing days | `runway` | int | formula |
+| AA | Posts in the window | `posts` | int | formula |
+| AB | Average order | `aov` | money | formula |
+| AC | Leads to sales | `conv` | percent | formula |
+| AD | Return on spend | `roas` | number1 | formula |
+| AE | Action needed | `alert` | status | formula |
+| AF | What to change next time | `review` | wrap | you type it |
+
+#### Seasonal Planner
+
+The dates that come round every year. Set how far ahead each one needs planning and the sheet tells you when to start.
+
+18 columns, 60 rows of capacity, 12 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Date | `date` | date | you type it (checked) |
+| C | Month | `month` | text | formula |
+| D | Event / moment | `name` | text | you type it |
+| E | Type | `type` | text | drop down `SeasonalTypeList` |
+| F | Your angle on it | `angle` | wrap | you type it |
+| G | Content pillar | `pillar` | text | drop down `PillarNames` |
+| H | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| I | Platforms | `platform` | text | you type it |
+| J | Plan this many days ahead | `lead_days` | int | you type it (checked) |
+| K | Hashtags | `hashtags` | text | you type it |
+| L | Budget | `budget` | money | you type it (checked) |
+| M | Status | `status` | status | drop down `CampaignStatusList` |
+| N | Start work by | `start_by` | date | formula |
+| O | Days to go | `days_to_go` | int | formula |
+| P | Posts planned | `posts` | int | formula |
+| Q | Action needed | `alert` | status | formula |
+| R | Notes | `notes` | wrap | you type it |
+
+#### Influencers
+
+From first message to final invoice - and, most importantly, whether the collaboration paid for itself.
+
+30 columns, 60 rows of capacity, 23 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Name | `name` | text | you type it |
+| C | Handle | `handle` | text | you type it |
+| D | Profile link | `url` | link | you type it |
+| E | Email / contact | `contact` | text | you type it |
+| F | Niche | `niche` | text | you type it |
+| G | Followers | `followers` | int | you type it (checked) |
+| H | Their engagement rate | `engagement` | percent | you type it (checked) |
+| I | Their audience | `demographic` | wrap | you type it |
+| J | Collaboration type | `type` | text | drop down `CollabTypeList` |
+| K | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| L | Contacted on | `outreach` | date | you type it (checked) |
+| M | Outreach status | `status` | status | drop down `OutreachStatusList` |
+| N | Their response | `response` | wrap | you type it |
+| O | Their fee | `rate` | money | you type it (checked) |
+| P | Agreed deliverables | `deliverables` | wrap | you type it |
+| Q | Due date | `deadline` | date | you type it (checked) |
+| R | Content approval | `approval` | status | drop down `ApprovalStatusList` |
+| S | Discount / affiliate code | `code` | text | you type it |
+| T | Total cost | `cost` | money | you type it (checked) |
+| U | Leads | `leads` | int | you type it (checked) |
+| V | Sales | `sales` | int | you type it (checked) |
+| W | Revenue | `revenue` | money | you type it (checked) |
+| X | Cost per sale | `cost_per_sale` | money | formula |
+| Y | Return on spend | `roi` | number1 | formula |
+| Z | Revenue less cost | `profit` | money | formula |
+| AA | Cost per 1,000 followers | `value` | money | formula |
+| AB | Worth repeating? | `work_again` | status | formula |
+| AC | Action needed | `alert` | status | formula |
+| AD | Notes | `notes` | wrap | you type it |
+
+#### UGC Tracker
+
+Your customers make your best adverts. Track what they post, whether you have permission to use it, and when those rights run out.
+
+21 columns, 100 rows of capacity, 17 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Customer / creator | `person` | text | you type it |
+| C | Where you found it | `source` | text | drop down `UGCSourceList` |
+| D | Platform | `platform` | text | drop down `PlatformList` |
+| E | Link to the post | `url` | link | you type it |
+| F | Type | `type` | text | drop down `AssetTypeList` |
+| G | Product shown | `product` | text | you type it |
+| H | Quote / review | `quote` | wrap | you type it |
+| I | Quality score (1-10) | `score` | rating | you type it (checked) |
+| J | Permission | `permission` | status | drop down `UGCPermissionList` |
+| K | Usage rights agreed | `rights` | wrap | you type it |
+| L | Rights expire | `expires` | date | you type it (checked) |
+| M | Credit line | `attribution` | text | you type it |
+| N | Approved to use | `approval` | status | drop down `ApprovalStatusList` |
+| O | Repost planned for | `repost` | date | you type it (checked) |
+| P | Where you will use it | `destination` | text | you type it |
+| Q | Engagements it got | `engagement` | int | you type it (checked) |
+| R | Rights left (days) | `days_left` | int | formula |
+| S | Safe to post? | `usable` | status | formula |
+| T | Action needed | `alert` | status | formula |
+| U | Notes | `notes` | wrap | you type it |
+
+#### Repurposing
+
+Your best reel is a carousel, a pin, a short and a newsletter. Plan the second life of every post that worked.
+
+22 columns, 150 rows of capacity, 14 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Original content ID | `source` | text | drop down `ContentIDs` |
+| C | Original post | `source_title` | text | formula |
+| D | Was on | `source_platform` | text | formula |
+| E | Original date | `source_date` | date | formula |
+| F | How it performed | `source_er` | percent | formula |
+| G | Reuse on | `destination_platform` | text | drop down `PlatformList` |
+| H | New format | `new_format` | text | drop down `FormatList` |
+| I | What you will change | `idea` | wrap | you type it |
+| J | New angle | `angle` | wrap | you type it |
+| K | New caption / title | `caption` | wrap | you type it |
+| L | Call to action | `cta` | text | drop down `CTAList` |
+| M | Asset to use | `asset` | text | drop down `AssetIDs` |
+| N | Owner | `owner` | text | drop down `TeamNames` |
+| O | Do it by | `deadline` | date | you type it (checked) |
+| P | Status | `status` | status | drop down `RepurposeStatusList` |
+| Q | Reposted on | `new_date` | date | you type it (checked) |
+| R | New link | `new_url` | link | you type it |
+| S | Times reused | `times_used` | int | formula |
+| T | Days late | `days_late` | int | formula |
+| U | Action needed | `alert` | status | formula |
+| V | Notes | `notes` | wrap | you type it |
+
+#### Competitors
+
+Watch four or five accounts properly rather than forty badly. Look for the gap, then fill it.
+
+24 columns, 40 rows of capacity, 19 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Competitor | `name` | text | you type it |
+| C | Platform | `platform` | text | drop down `PlatformList` |
+| D | Profile link | `url` | link | you type it |
+| E | Their niche | `niche` | text | you type it |
+| F | Followers | `audience` | int | you type it (checked) |
+| G | How often they post | `frequency` | text | you type it |
+| H | Their content themes | `pillars` | wrap | you type it |
+| I | Formats they use | `formats` | wrap | you type it |
+| J | Their best post | `best_post` | wrap | you type it |
+| K | Their engagement rate | `engagement` | percent | you type it (checked) |
+| L | Campaign they are running | `campaign` | wrap | you type it |
+| M | Questions their audience asks | `questions` | wrap | you type it |
+| N | What is working for them | `trending` | wrap | you type it |
+| O | Platform / industry news | `news` | wrap | you type it |
+| P | Gap you could fill | `gap` | wrap | you type it |
+| Q | Your move | `opportunity` | wrap | you type it |
+| R | Last reviewed | `reviewed` | date | you type it (checked) |
+| S | Where you looked | `source` | text | you type it |
+| T | Versus your rate | `vs_you` | percent | formula |
+| U | Ideas taken from them | `ideas` | int | formula |
+| V | Days since review | `days_since` | int | formula |
+| W | Action needed | `alert` | status | formula |
+| X | Notes | `notes` | wrap | you type it |
+
+#### Trends
+
+Catch a trend in the first week or leave it alone. Score the fit, set a use-by date, and record what actually happened.
+
+23 columns, 80 rows of capacity, 18 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Trend / sound / format | `name` | text | you type it |
+| C | Type | `type` | text | drop down `TrendTypeList` |
+| D | Platform | `platform` | text | drop down `PlatformList` |
+| E | Spotted on | `found` | date | you type it (checked) |
+| F | Example link | `url` | link | you type it |
+| G | Audio / sound name | `audio` | text | you type it |
+| H | Topic | `topic` | text | you type it |
+| I | Who it suits | `audience` | text | drop down `PersonaNames` |
+| J | Fit for your brand (1-10) | `score` | rating | you type it (checked) |
+| K | How you would use it | `idea` | wrap | you type it |
+| L | Owner | `owner` | text | drop down `TeamNames` |
+| M | Use it before | `deadline` | date | you type it (checked) |
+| N | Status | `status` | status | drop down `ContentStatusList` |
+| O | Posted on | `posted` | date | you type it (checked) |
+| P | Reach it got | `reach` | int | you type it (checked) |
+| Q | Engagements | `engagement` | int | you type it (checked) |
+| R | Engagement rate | `er` | percent | formula |
+| S | Days old | `age` | int | formula |
+| T | Days left | `window` | int | formula |
+| U | What happened | `outcome` | wrap | you type it |
+| V | Action needed | `alert` | status | formula |
+| W | Notes | `notes` | wrap | you type it |
+
+#### Analytics
+
+Once a month, copy the headline numbers from each platform into the cream cells. Everything else in the workbook - dashboards, growth, reports - is calculated from this one table.
+
+41 columns, 150 rows of capacity, 21 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Month | `month` | date | you type it (checked) |
+| C | Month key | `month_key` | text | formula |
+| D | Platform | `platform` | text | drop down `PlatformList` |
+| E | Account | `account` | text | drop down `AccountNames` |
+| F | Followers at start | `followers_start` | int | you type it (checked) |
+| G | Followers at end | `followers_end` | int | you type it (checked) |
+| H | Unfollows | `lost` | int | you type it (checked) |
+| I | Posts published | `posts` | int | you type it (checked) |
+| J | Reach | `reach` | int | you type it (checked) |
+| K | Impressions | `impressions` | int | you type it (checked) |
+| L | Engagements | `engagements` | int | you type it (checked) |
+| M | Likes | `likes` | int | you type it (checked) |
+| N | Comments | `comments` | int | you type it (checked) |
+| O | Shares | `shares` | int | you type it (checked) |
+| P | Saves | `saves` | int | you type it (checked) |
+| Q | Profile visits | `profile_visits` | int | you type it (checked) |
+| R | Link clicks | `clicks` | int | you type it (checked) |
+| S | Leads / sign-ups | `leads` | int | you type it (checked) |
+| T | Sales | `conversions` | int | you type it (checked) |
+| U | Revenue | `revenue` | money | you type it (checked) |
+| V | Spend | `spend` | money | you type it (checked) |
+| W | New followers | `gained` | int | formula |
+| X | Net growth | `net_growth` | int | formula |
+| Y | Growth rate | `growth_rate` | percent | formula |
+| Z | On your calendar | `planned` | int | formula |
+| AA | Engagement rate | `er` | percent | formula |
+| AB | Reach per post | `reach_per_post` | int | formula |
+| AC | Engagements per post | `eng_per_post` | int | formula |
+| AD | Reach vs followers | `reach_rate` | percent | formula |
+| AE | Click rate | `ctr` | percent | formula |
+| AF | Clicks to leads | `lead_rate` | percent | formula |
+| AG | Leads to sales | `conv_rate` | percent | formula |
+| AH | Cost per lead | `cpl` | money | formula |
+| AI | Return on spend | `roas` | number1 | formula |
+| AJ | Reach last month | `prev_reach` | int | formula, hidden |
+| AK | Reach vs last month | `reach_change` | percent | formula |
+| AL | Followers last month | `prev_followers` | int | formula, hidden |
+| AM | Duplicate check | `dup_check` | status | formula |
+| AN | Action needed | `alert` | status | formula |
+| AO | Notes | `notes` | wrap | you type it |
+
+#### Performance
+
+Post by post results. Fill in the cream columns a few days after publishing and the workbook ranks every post, finds your best pillar and tells you what to make more of.
+
+41 columns, 400 rows of capacity, 13 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Content ID | `content` | text | drop down `ContentIDs` |
+| C | Content title | `title` | text | formula |
+| D | Published | `date` | date | formula |
+| E | Month | `month` | text | formula |
+| F | Platform | `platform` | text | formula |
+| G | Format | `format` | text | formula |
+| H | Pillar | `pillar` | text | formula |
+| I | Campaign | `campaign` | text | formula |
+| J | Caption used | `caption` | text | formula |
+| K | Written for | `persona` | text | formula |
+| L | Funnel stage | `funnel` | text | formula |
+| M | Time slot | `slot` | text | formula |
+| N | Day | `weekday` | text | formula |
+| O | Reach | `reach` | int | you type it (checked) |
+| P | Impressions | `impressions` | int | you type it (checked) |
+| Q | Likes | `likes` | int | you type it (checked) |
+| R | Comments | `comments` | int | you type it (checked) |
+| S | Shares | `shares` | int | you type it (checked) |
+| T | Saves | `saves` | int | you type it (checked) |
+| U | Link clicks | `clicks` | int | you type it (checked) |
+| V | Avg watch time (sec) | `watch` | number1 | you type it (checked) |
+| W | Sales from it | `conversions` | int | you type it (checked) |
+| X | Revenue | `revenue` | money | you type it (checked) |
+| Y | Target rate | `target_rate` | percent | you type it (checked) |
+| Z | Engagements | `engagements` | int | formula |
+| AA | Engagement rate | `er` | percent | formula |
+| AB | Save rate | `save_rate` | percent | formula |
+| AC | Share rate | `share_rate` | percent | formula |
+| AD | Comment rate | `comment_rate` | percent | formula |
+| AE | Click rate | `ctr` | percent | formula |
+| AF | Clicks to sales | `conv_rate` | percent | formula |
+| AG | Revenue per 1,000 reached | `rev_per_1k` | money | formula |
+| AH | Target used | `target_used` | percent | formula, hidden |
+| AI | Versus target | `vs_target` | percent | formula |
+| AJ | Rank key | `rank_key` | number1 | formula, hidden |
+| AK | Rank by engagement | `rank` | int | formula |
+| AL | Verdict | `verdict` | status | formula |
+| AM | Duplicate check | `dup_check` | status | formula |
+| AN | Action needed | `alert` | status | formula |
+| AO | What you learned | `notes` | wrap | you type it |
+
+#### AB Tests
+
+Two versions, one difference, one measure. Small samples lie, so the sheet tells you how much to trust each result.
+
+28 columns, 40 rows of capacity, 20 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Test name | `name` | text | you type it |
+| C | What you changed | `variable` | text | drop down `TestVariableList` |
+| D | Platform | `platform` | text | drop down `PlatformList` |
+| E | Hypothesis | `hypothesis` | wrap | you type it |
+| F | Version A | `version_a` | wrap | you type it |
+| G | Version B | `version_b` | wrap | you type it |
+| H | Kept the same | `audience` | wrap | you type it |
+| I | Main measure | `metric` | text | you type it |
+| J | Second measure | `secondary` | text | you type it |
+| K | Started | `start` | date | you type it (checked) |
+| L | Finished | `end` | date | you type it (checked) |
+| M | A result | `a_result` | percent | you type it (checked) |
+| N | B result | `b_result` | percent | you type it (checked) |
+| O | A clicks | `a_clicks` | int | you type it (checked) |
+| P | B clicks | `b_clicks` | int | you type it (checked) |
+| Q | A sales | `a_conversions` | int | you type it (checked) |
+| R | B sales | `b_conversions` | int | you type it (checked) |
+| S | Status | `status` | status | drop down `TestStatusList` |
+| T | Difference | `difference` | percent | formula |
+| U | Uplift | `uplift` | percent | formula |
+| V | Winner | `winner` | text | formula |
+| W | Total clicks | `sample_size` | int | formula |
+| X | How much to trust it | `trust` | status | formula |
+| Y | Days run | `days` | int | formula |
+| Z | Your read on it | `confidence` | wrap | you type it |
+| AA | Next test to run | `next_test` | wrap | you type it |
+| AB | Action needed | `alert` | status | formula |
+
+#### Ads
+
+Boosted posts and proper ad sets. Keep the spend, the creative and the result in one row so you can see which ads actually pay.
+
+33 columns, 100 rows of capacity, 20 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Ad / ad set name | `name` | text | you type it |
+| C | Platform | `platform` | text | drop down `PlatformList` |
+| D | Objective | `objective` | text | drop down `AdObjectiveList` |
+| E | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| F | Audience | `audience` | wrap | you type it |
+| G | Targeting | `segment` | wrap | you type it |
+| H | Creative used | `creative` | text | drop down `AssetIDs` |
+| I | Ad copy | `copy` | wrap | you type it |
+| J | Headline | `headline` | wrap | you type it |
+| K | Landing page | `landing` | link | you type it |
+| L | Start | `start` | date | you type it (checked) |
+| M | End | `end` | date | you type it (checked) |
+| N | Budget | `budget` | money | you type it (checked) |
+| O | Spent | `spend` | money | you type it (checked) |
+| P | Impressions | `impressions` | int | you type it (checked) |
+| Q | Reach | `reach` | int | you type it (checked) |
+| R | Clicks | `clicks` | int | you type it (checked) |
+| S | Sales | `conversions` | int | you type it (checked) |
+| T | Revenue | `revenue` | money | you type it (checked) |
+| U | Status | `status` | status | formula |
+| V | Days live | `days` | int | formula |
+| W | Spend per day | `daily_spend` | money | formula |
+| X | Click rate | `ctr` | percent | formula |
+| Y | Cost per click | `cpc` | money | formula |
+| Z | Cost per 1,000 shown | `cpm` | money | formula |
+| AA | Clicks to sales | `conv_rate` | percent | formula |
+| AB | Cost per sale | `cpa` | money | formula |
+| AC | Return on spend | `roas` | number1 | formula |
+| AD | Revenue less spend | `profit` | money | formula |
+| AE | Budget used | `budget_used` | percent | formula |
+| AF | Action needed | `alert` | status | formula |
+| AG | Notes | `notes` | wrap | you type it |
+
+#### Assets
+
+Every photo, clip, template and thumbnail with its link, its rights and a count of where it has been used.
+
+25 columns, 250 rows of capacity, 17 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Asset name | `title` | text | you type it |
+| C | Type | `type` | text | drop down `AssetTypeList` |
+| D | File link | `link` | link | you type it |
+| E | Where it lives | `storage` | text | you type it |
+| F | Template link | `template` | link | you type it |
+| G | Made by | `creator` | text | drop down `TeamNames` |
+| H | Created | `created` | date | you type it (checked) |
+| I | Last updated | `updated` | date | you type it (checked) |
+| J | Size | `dimensions` | text | you type it |
+| K | Suits | `platform` | text | you type it |
+| L | Product shown | `product` | text | you type it |
+| M | Campaign | `campaign` | text | drop down `CampaignNames` |
+| N | Approval | `approval` | status | drop down `ApprovalStatusList` |
+| O | Usage rights | `rights` | text | drop down `UsageRightsList` |
+| P | Rights expire | `expires` | date | you type it (checked) |
+| Q | Times reused (manual) | `reuse` | int | you type it (checked) |
+| R | Used on posts | `used_posts` | int | formula |
+| S | Used in ads | `used_ads` | int | formula |
+| T | Last used on | `last_used` | date | formula |
+| U | Days old | `age_days` | int | formula |
+| V | Rights left (days) | `rights_left` | int | formula |
+| W | Duplicate check | `dup_check` | status | formula |
+| X | Action needed | `alert` | status | formula |
+| Y | Notes | `notes` | wrap | you type it |
+
+#### Goals
+
+Four or five goals, each with a number, a date and an owner. The sheet compares how far you have come with how far through the year you are.
+
+25 columns, 40 rows of capacity, 16 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Goal | `name` | text | you type it |
+| C | Category | `category` | text | drop down `GoalCategoryList` |
+| D | Platform | `platform` | text | drop down `PlatformList` |
+| E | What success looks like | `description` | wrap | you type it |
+| F | Owner | `owner` | text | drop down `TeamNames` |
+| G | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| H | How you will get there | `plan` | wrap | you type it |
+| I | Starting point | `baseline` | number | you type it (checked) |
+| J | Where you are now | `current` | number | you type it (checked) |
+| K | Target | `target` | number | you type it (checked) |
+| L | By when | `target_date` | date | you type it (checked) |
+| M | Monthly step | `milestone_month` | number | you type it (checked) |
+| N | Quarterly step | `milestone_quarter` | number | you type it (checked) |
+| O | Budget for it | `budget` | money | you type it (checked) |
+| P | Status | `status` | status | drop down `GoalStatusList` |
+| Q | Still to go | `to_go` | number | formula |
+| R | Progress | `progress` | percent | formula |
+| S | Days left | `days_left` | int | formula |
+| T | Where you should be | `expected` | percent | formula |
+| U | Year start | `start_ref` | date | formula, hidden |
+| V | On track? | `pace` | status | formula |
+| W | Needed each month | `needed_per_month` | number1 | formula |
+| X | Action needed | `alert` | status | formula |
+| Y | Notes | `notes` | wrap | you type it |
+
+#### Budget
+
+Ads, tools, props, editing and freelancers. One row per cost per month - the dashboard totals it and compares it with the revenue you recorded.
+
+17 columns, 60 rows of capacity, 8 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Month | `month` | date | you type it (checked) |
+| C | Month key | `month_key` | text | formula |
+| D | Cost category | `category` | text | drop down `CostCategoryList` |
+| E | Platform | `platform` | text | you type it |
+| F | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| G | Planned | `planned` | money | you type it (checked) |
+| H | Actual | `actual` | money | you type it (checked) |
+| I | Difference | `variance` | money | formula |
+| J | Difference % | `variance_pct` | percent | formula |
+| K | Share of the month | `share` | percent | formula |
+| L | Revenue credited | `revenue` | money | you type it (checked) |
+| M | Return | `roi` | number1 | formula |
+| N | Spent that month | `month_total` | money | formula |
+| O | Versus monthly budget | `vs_budget` | percent | formula |
+| P | Action needed | `alert` | status | formula |
+| Q | Notes | `notes` | wrap | you type it |
+
+#### Team
+
+Even a team of one. Set who owns what, and the sheet counts the posts and tasks sitting with each person.
+
+19 columns, 30 rows of capacity, 9 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Name | `name` | text | you type it |
+| C | Role | `role` | text | drop down `RoleList` |
+| D | Email / contact | `contact` | text | you type it |
+| E | Looks after | `platform` | text | you type it |
+| F | Hours a week | `hours` | number1 | you type it (checked) |
+| G | Hourly rate | `rate` | money | you type it (checked) |
+| H | Reviews content? | `reviews` | flag | you type it (checked) |
+| I | Final approval? | `approves` | flag | you type it (checked) |
+| J | Cost a week | `weekly_cost` | money | formula |
+| K | Cost a month | `monthly_cost` | money | formula |
+| L | Posts owned | `posts` | int | formula |
+| M | Published | `published` | int | formula |
+| N | Late posts | `late` | int | formula |
+| O | Open tasks | `tasks_open` | int | formula |
+| P | Overdue tasks | `tasks_late` | int | formula |
+| Q | On-time rate | `on_time` | percent | formula |
+| R | Action needed | `alert` | status | formula |
+| S | Notes | `notes` | wrap | you type it |
+
+#### Tasks
+
+Shoots, edits, approvals, replies and the monthly analytics entry - everything that is not a post but still has to happen.
+
+13 columns, 60 rows of capacity, 8 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Task | `task` | text | you type it |
+| C | Owner | `owner` | text | drop down `TeamNames` |
+| D | Due date | `due` | date | you type it (checked) |
+| E | Week | `week` | int | formula |
+| F | Priority | `priority` | text | drop down `PriorityList` |
+| G | Status | `status` | status | drop down `TaskStatusList` |
+| H | Linked campaign | `campaign` | text | drop down `CampaignNames` |
+| I | Linked content | `content` | text | drop down `ContentIDs` |
+| J | Which post | `content_title` | text | formula |
+| K | Days to go | `days_to_go` | int | formula |
+| L | Action needed | `alert` | status | formula |
+| M | Notes | `notes` | wrap | you type it |
+
+#### Compliance
+
+The boring list that keeps you out of trouble: disclosure, music rights, permissions, accessibility and the weekly quality checks.
+
+13 columns, 100 rows of capacity, 10 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | ID | `id` | id | formula |
+| B | Area | `area` | text | you type it |
+| C | Check | `check` | wrap | you type it |
+| D | Why it matters | `why` | wrap | you type it |
+| E | How often | `frequency` | text | drop down `FrequencyList` |
+| F | Who checks it | `owner` | text | drop down `TeamNames` |
+| G | Status | `status` | status | drop down `ComplianceStatusList` |
+| H | Last checked | `last_checked` | date | you type it (checked) |
+| I | Evidence / link | `evidence` | link | you type it |
+| J | Action to take | `action` | wrap | you type it |
+| K | Days since | `days_since` | int | formula |
+| L | Action needed | `alert` | status | formula |
+| M | Notes | `notes` | wrap | you type it |
+
+#### Calc
+
+Helper tables for the dashboards and reports. This tab is hidden by default - unhide it only if you want to check the maths.
+
+88 columns, 600 rows of capacity, 0 of them typed in by hand.
+
+| Col | Header | Key | Format | Filled by |
+|-----|--------|-----|--------|-----------|
+| A | Month start | `m_start` | date | formula |
+| B | Month end | `m_end` | date | formula |
+| C | Month key | `m_key` | text | formula |
+| D | Month | `m_label` | text | formula |
+| E | Posts planned | `m_planned` | int | formula |
+| F | Published | `m_published` | int | formula |
+| G | Reach | `m_reach` | int | formula |
+| H | Impressions | `m_impressions` | int | formula |
+| I | Engagements | `m_engagements` | int | formula |
+| J | Engagement rate | `m_er` | percent | formula |
+| K | Followers | `m_followers` | int | formula |
+| L | Follower growth | `m_growth` | int | formula |
+| M | Clicks | `m_clicks` | int | formula |
+| N | Leads | `m_leads` | int | formula |
+| O | Sales | `m_conversions` | int | formula |
+| P | Revenue | `m_revenue` | money | formula |
+| Q | Spend | `m_spend` | money | formula |
+| R | Revenue less spend | `m_profit` | money | formula |
+| S | Target posts | `m_target` | int | formula |
+| T | Platform | `p_name` | text | formula |
+| U | Posts (month) | `p_posts_m` | int | formula |
+| V | Published (month) | `p_published_m` | int | formula |
+| W | Reach (month) | `p_reach_m` | int | formula |
+| X | Engagements (month) | `p_eng_m` | int | formula |
+| Y | Engagement rate (month) | `p_er_m` | percent | formula |
+| Z | Followers (month) | `p_followers` | int | formula |
+| AA | Growth (month) | `p_growth_m` | int | formula |
+| AB | Clicks (month) | `p_clicks_m` | int | formula |
+| AC | Revenue (month) | `p_revenue_m` | money | formula |
+| AD | Posts (year) | `p_posts_y` | int | formula |
+| AE | Reach (year) | `p_reach_y` | int | formula |
+| AF | Engagements (year) | `p_eng_y` | int | formula |
+| AG | Engagement rate (year) | `p_er_y` | percent | formula |
+| AH | Growth (year) | `p_growth_y` | int | formula |
+| AI | Platform rank key | `p_key` | number | formula |
+| AJ | Pillar | `pl_name` | text | formula |
+| AK | Pillar posts | `pl_posts` | int | formula |
+| AL | Pillar reach | `pl_reach` | int | formula |
+| AM | Pillar engagements | `pl_eng` | int | formula |
+| AN | Pillar engagement rate | `pl_er` | percent | formula |
+| AO | Pillar rank key | `pl_key` | number | formula |
+| AP | Format | `fm_name` | text | formula |
+| AQ | Format posts | `fm_posts` | int | formula |
+| AR | Format reach | `fm_reach` | int | formula |
+| AS | Format engagements | `fm_eng` | int | formula |
+| AT | Format engagement rate | `fm_er` | percent | formula |
+| AU | Format rank key | `fm_key` | number | formula |
+| AV | Weekday | `dw_day` | text | formula |
+| AW | Posts that day | `dw_posts` | int | formula |
+| AX | Reach that day | `dw_reach` | int | formula |
+| AY | Engagements that day | `dw_eng` | int | formula |
+| AZ | Engagement rate that day | `dw_er` | percent | formula |
+| BA | Weekday rank key | `dw_key` | number | formula |
+| BB | Time slot | `sl_slot` | text | formula |
+| BC | Posts in slot | `sl_posts` | int | formula |
+| BD | Reach in slot | `sl_reach` | int | formula |
+| BE | Engagements in slot | `sl_eng` | int | formula |
+| BF | Engagement rate in slot | `sl_er` | percent | formula |
+| BG | Slot rank key | `sl_key` | number | formula |
+| BH | Post | `pf_title` | text | formula |
+| BI | Post platform | `pf_platform` | text | formula |
+| BJ | Post pillar | `pf_pillar` | text | formula |
+| BK | Post date | `pf_date` | date | formula |
+| BL | Post month | `pf_month` | text | formula |
+| BM | Post reach | `pf_reach` | int | formula |
+| BN | Post engagement rate | `pf_er` | percent | formula |
+| BO | Top post key (period) | `pf_key_m` | number | formula |
+| BP | Top reach key (period) | `pf_reach_key_m` | number | formula |
+| BQ | Top post key (year) | `pf_key_y` | number | formula |
+| BR | Top post key (report range) | `pf_key_r` | number | formula |
+| BS | Top reach key (year) | `pf_reach_key` | number | formula |
+| BT | Workflow status | `ws_status` | text | formula |
+| BU | In this status | `ws_count` | int | formula |
+| BV | In status (month) | `ws_month` | int | formula |
+| BW | Owner | `ow_name` | text | formula |
+| BX | Owner posts | `ow_posts` | int | formula |
+| BY | Owner in progress | `ow_open` | int | formula |
+| BZ | Owner open tasks | `ow_tasks` | int | formula |
+| CA | Campaign | `cm_name` | text | formula |
+| CB | Campaign revenue | `cm_revenue` | money | formula |
+| CC | Campaign spend | `cm_spend` | money | formula |
+| CD | Campaign reach | `cm_reach` | int | formula |
+| CE | Campaign rank key | `cm_key` | number | formula |
+| CF | Account | `ac_name` | text | formula |
+| CG | Account platform | `ac_platform` | text | formula |
+| CH | Account followers | `ac_followers` | int | formula |
+| CI | Account growth (month) | `ac_growth` | int | formula |
+| CJ | Account rank key | `ac_key` | number | formula |
+
+---
+
+*10,641 lines of Python in 56 files.*

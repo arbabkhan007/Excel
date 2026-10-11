@@ -99,7 +99,7 @@ same engine, the same conventions and the same quality tools.
 
 Everything needed to build the workbook is packed into
 
-    download/social-media-content-planner-source.zip   (261 KB)
+    download/social-media-content-planner-source.zip   (291 KB)
 
 [Download the zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-source.zip)
 — unzip it anywhere and run:

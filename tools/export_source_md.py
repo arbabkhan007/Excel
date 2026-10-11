@@ -95,6 +95,10 @@ PET_SECTIONS = [
 ]
 
 PET = {
+    "package": "pet_sitting_spreadsheet",
+    "builder": "build_pet_sitting_workbook.py",
+    "doc": "README.md",
+    "tabs": 27,
     "title": "Pet Sitting & Dog Walking Business Spreadsheet",
     "subtitle": ("Complete source code of the generator that writes the "
                  "`.xlsx` product."),
@@ -227,6 +231,10 @@ SOCIAL_SECTIONS = [
 ]
 
 SOCIAL = {
+    "package": "social_media_spreadsheet",
+    "builder": "build_social_media_workbook.py",
+    "doc": "README_SOCIAL.md",
+    "tabs": 43,
     "title": "Social Media Content Calendar & Analytics Planner",
     "subtitle": ("Complete source code of the generator that writes the "
                  "`.xlsx` product."),
@@ -269,14 +277,192 @@ SOCIAL = {
 PRODUCTS = {"pet": PET, "social": SOCIAL}
 
 
-def blurb(path: str) -> str:
-    """First sentence of the module docstring, as a one line description."""
+# ---------------------------------------------------------------------------
+# Chapter 0 - how the generator is put together (same engine for both
+# products, so the prose is written once and filled in per product)
+# ---------------------------------------------------------------------------
+
+ARCHITECTURE = """\
+Everything here is plain Python writing a `.xlsx` file through XlsxWriter.
+There is no template workbook, no copy of an existing file and no manual
+step: the spreadsheet is described in code, and the code is the only
+source of truth for what ends up in a cell.
+
+Two kinds of tab exist.
+
+* A **register** is a data tab — a header row and hundreds of rows under
+  it. Its module exposes `NAME`, a `spec(cfg)` that returns a
+  `SheetSpec` (a list of `Col` objects) and, optionally, a
+  `decorate(sheet, fmts, cfg)` that adds totals or notes underneath the
+  grid. Nothing in a register module writes cells directly.
+* A **page** is a hand-built tab — the dashboards, the reports, the
+  printables, the welcome and help pages. Its module exposes
+  `build(book, fmts, cfg, reg)` and writes with `SheetWriter` helpers:
+  `banner`, `section`, `kpi`, `table_head`, `calc_row`, `note`,
+  `bullets`, `field`, `merge`, `finish`.
+
+### The build pipeline
+
+`{builder}` parses the command line into a `Config`, then
+`{package}.build.build_workbook(path, cfg)` does six things in order:
+
+1. **Open the workbook** and stamp the document properties — title,
+   author, company, keywords and a comment naming the protection
+   password. The author is the same on every generated file.
+2. **Build the `FormatBook`.** Every visual style the product uses is
+   created once, up front: a style (text, date, money, percent, status,
+   link, …) crossed with a mode (`INPUT` cream and unlocked, `CALC` grey
+   and locked, `PLAIN`), plus the page chrome (titles, section bars, KPI
+   tiles, notes) and the conditional formatting palette.
+3. **Register every `SheetSpec` first**, before a single tab is written.
+   This is what lets any sheet refer to any other sheet's columns by
+   name regardless of which tab happens to be written first.
+4. **Write the tabs in `SHEET_ORDER`.** Registers go through
+   `build_register()` — `SheetWriter.grid(spec)` writes widths, formats,
+   headers, formulas, sample rows, drop downs, header comments,
+   conditional formats, the autofilter, frozen panes and the print
+   setup — then the module's `decorate()` runs and the sheet is
+   protected. Pages call their own `build()`.
+5. **Define the live lookup names** (`ContentIDs`, `TeamNames`, …) from
+   the registry. Each is an `OFFSET` range that grows and shrinks with
+   the number of filled rows, so a drop down never shows blanks.
+6. **Hide the `Calc` engine**, activate the first tab and close the file.
+
+### Describing a column
+
+A column is declared once, for one row, with placeholders:
+
+```python
+Col("er", "Engagement rate", 11, "percent",
+    formula='=IFERROR({{engagements}}{{r}}/{{reach}}{{r}},"")',
+    cf=[{{"type": "cell", "criteria": ">=", "value": "=TargetEngagement",
+         "fmt": "good"}}])
+```
+
+`Col` carries the key, the header text, the width, the style, the
+formula template, the data validation, the header comment, the
+conditional formats, whether the column is hidden and which outline
+group it belongs to. `Registry.render()` expands the template per row:
+
+| Token | Becomes |
+|-------|---------|
+| `{{r}}` / `{{r_prev}}` | this row number / the row above |
+| `{{key}}` | the column letter of another column on the same sheet |
+| `{{first}}` / `{{last}}` | the first and last data row of the sheet |
+| `[[Sheet.key]]` | an absolute range on another sheet, e.g. `'Content Calendar'!$G$5:$G$604` |
+| `[[Sheet.key#12]]` | one cell of that column |
+| `[[Sheet.key#]]` | the same row as the formula being written |
+
+Helpers cover the patterns Excel 2010 makes awkward — `max_if`,
+`min_if`, `blank_if`, `safe`, `lookup`, `dynamic_name`, `quote_sheet`.
+
+### The rules every formula obeys
+
+* **Excel 2010 safe.** `SUMIFS`, `COUNTIFS`, `INDEX/MATCH`, `SMALL`,
+  `LARGE`, `RANK`, `EDATE`, `EOMONTH`, `SUMPRODUCT(MAX(...))`. No
+  dynamic arrays, no `XLOOKUP`, no `IFS`, no `AGGREGATE`, nothing that
+  needs Ctrl+Shift+Enter. The file opens in Excel 2010 and later, Google
+  Sheets, LibreOffice and Numbers.
+* **No charts.** The vendored XlsxWriter in this repository cannot write
+  them, so trends are drawn with `add_sparkline`, data bars and
+  three-colour scales — which also survive a Google Sheets import.
+* **Nth-row lookups without array formulas.** Hidden composite key
+  columns (`date + ROW()/100000`) plus `SMALL` and `INDEX/MATCH` answer
+  "the third thing on 14 March" and "the next eight due" with ordinary
+  formulas.
+* **One number, one home.** Nothing is typed into two tabs. Every other
+  appearance of a figure is a formula pointing back at the one place it
+  was entered.
+* **Locked where it matters.** Formula cells are locked, input cells are
+  not, and every sheet is protected with the same password — so the
+  maths cannot be typed over by accident but the cream cells stay open.
+
+### The hidden `Calc` tab
+
+Dashboards do not aggregate the registers directly. A hidden sheet
+pre-computes one row per month, per platform/service, per category and
+per owner, each with its own ranking key, and the visible pages read
+those columns with plain `INDEX`/`MATCH`. It keeps the heavy
+`SUMIFS` work in one place, keeps recalculation predictable, and makes
+every dashboard number traceable to a single cell.
+"""
+
+
+def outline(path: str) -> list:
+    """`[(kind, name, note)]` for the classes, functions and constants."""
     with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
         source = handle.read()
     try:
-        text = ast.get_docstring(ast.parse(source)) or ""
+        tree = ast.parse(source)
     except SyntaxError:                                  # pragma: no cover
-        text = ""
+        return []
+    items = []
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            args = [a.arg for a in node.args.args]
+            if node.args.vararg:
+                args.append("*" + node.args.vararg.arg)
+            if node.args.kwonlyargs:
+                args.append("*")
+                args += [a.arg for a in node.args.kwonlyargs]
+            if node.args.kwarg:
+                args.append("**" + node.args.kwarg.arg)
+            note = first_sentence(ast.get_docstring(node) or "")
+            items.append(("function", f"{node.name}({', '.join(args)})",
+                          note))
+        elif isinstance(node, ast.ClassDef):
+            bases = []
+            for base in node.bases:
+                try:
+                    bases.append(ast.unparse(base))
+                except Exception:                        # pragma: no cover
+                    pass
+            name = node.name + (f"({', '.join(bases)})" if bases else "")
+            note = first_sentence(ast.get_docstring(node) or "")
+            fields = [n.target.id for n in node.body
+                      if isinstance(n, ast.AnnAssign)
+                      and isinstance(n.target, ast.Name)]
+            if fields and not note:
+                note = "fields: " + ", ".join(fields[:8])
+            items.append(("class", name, note))
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = ([node.target] if isinstance(node, ast.AnnAssign)
+                       else node.targets)
+            for target in targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if not re.match(r"^[A-Z][A-Z0-9_]*$", target.id):
+                    continue
+                items.append(("constant", target.id,
+                              describe_value(node.value)))
+    return items
+
+
+def describe_value(node) -> str:
+    """A short, human description of a module level constant."""
+    if node is None:
+        return ""
+    if isinstance(node, ast.Constant):
+        text = repr(node.value)
+        return text if len(text) < 60 else f"{text[:57]}..."
+    if isinstance(node, (ast.List, ast.Tuple)):
+        return f"{len(node.elts)} items"
+    if isinstance(node, ast.Dict):
+        return f"{len(node.keys)} entries"
+    if isinstance(node, ast.Call):
+        try:
+            name = ast.unparse(node.func)
+        except Exception:                                # pragma: no cover
+            name = "call"
+        return f"{name}(...)"
+    try:
+        text = ast.unparse(node)
+    except Exception:                                    # pragma: no cover
+        return ""
+    return text if len(text) < 60 else f"{text[:57]}..."
+
+
+def first_sentence(text: str) -> str:
     text = " ".join(text.split())
     if not text:
         return ""
@@ -286,10 +472,125 @@ def blurb(path: str) -> str:
     return text.strip().rstrip(".")
 
 
+def blurb(path: str) -> str:
+    """First sentence of the module docstring, as a one line description."""
+    with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+        source = handle.read()
+    try:
+        text = ast.get_docstring(ast.parse(source)) or ""
+    except SyntaxError:                                  # pragma: no cover
+        text = ""
+    return first_sentence(text)
+
+
+def full_docstring(path: str) -> str:
+    with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+        source = handle.read()
+    try:
+        return (ast.get_docstring(ast.parse(source)) or "").strip()
+    except SyntaxError:                                  # pragma: no cover
+        return ""
+
+
 def anchor(heading: str) -> str:
     slug = heading.lower()
     slug = re.sub(r"[^\w\s-]", "", slug)
     return re.sub(r"\s+", "-", slug.strip())
+
+
+def tab_table(product: dict) -> list:
+    """A row per tab: order, name, kind, module, columns, rows.
+
+    Imports the product package, so it degrades to nothing if the
+    generator is not importable from where the tool is run.
+    """
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    try:
+        package = __import__(f"{product['package']}.build",
+                             fromlist=["build"])
+        config = __import__(f"{product['package']}.config",
+                            fromlist=["config"])
+    except Exception:                                    # pragma: no cover
+        return []
+    cfg = config.Config()
+    lines = ["| # | Tab | Kind | Written by | Columns | Rows |",
+             "|---|-----|------|------------|--------:|-----:|"]
+    for number, name in enumerate(package.SHEET_ORDER, start=1):
+        module = package.REGISTER_BY_NAME.get(name)
+        if module is not None:
+            spec = module.spec(cfg)
+            # a register is usually a module, but the platform planners
+            # are instances of one shared class
+            where = (getattr(module, "__name__", None)
+                     or type(module).__module__)
+            path = where.replace(".", "/") + ".py"
+            lines.append(f"| {number} | **{name}** | register | "
+                         f"`{path}` | {len(spec.columns)} | {spec.rows} |")
+        else:
+            builder = package.PAGE_BUILDERS.get(name)
+            path = (getattr(builder, "__module__", "")
+                    .replace(".", "/") + ".py")
+            lines.append(f"| {number} | **{name}** | page | `{path}` "
+                         f"| - | - |")
+    return lines
+
+
+def data_dictionary(product: dict) -> list:
+    """One table per register: every column, its type and where it comes
+    from. Generated from the specs themselves, so it cannot drift."""
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    try:
+        package = __import__(f"{product['package']}.build",
+                             fromlist=["build"])
+        config = __import__(f"{product['package']}.config",
+                            fromlist=["config"])
+    except Exception:                                    # pragma: no cover
+        return []
+    cfg = config.Config()
+    lines = []
+    for name in package.SHEET_ORDER:
+        module = package.REGISTER_BY_NAME.get(name)
+        if module is None:
+            continue
+        spec = module.spec(cfg)
+        typed = sum(1 for c in spec.columns if not c.is_formula)
+        lines += [f"#### {spec.name}", ""]
+        if spec.subtitle:
+            lines += [f"{spec.subtitle}", ""]
+        lines += [f"{len(spec.columns)} columns, {spec.rows} rows of "
+                  f"capacity, {typed} of them typed in by hand.", "",
+                  "| Col | Header | Key | Format | Filled by |",
+                  "|-----|--------|-----|--------|-----------|"]
+        for col in spec.columns:
+            source = "formula" if col.is_formula else "you type it"
+            if col.validate:
+                picked = str(col.validate.get("source", "")).lstrip("=")
+                if picked and re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", picked):
+                    source = f"drop down `{picked}`"
+                elif not col.is_formula:
+                    source = "you type it (checked)"
+            if col.hidden:
+                source += ", hidden"
+            lines.append(f"| {spec.letter(col.key)} | {col.header} | "
+                         f"`{col.key}` | {col.style} | {source} |")
+        lines.append("")
+    return lines
+
+
+def file_table(sections: list) -> list:
+    lines = ["| File | Lines | What it is |", "|------|------:|------------|"]
+    for _heading, _intro, paths in sections:
+        for path in paths:
+            with open(os.path.join(ROOT, path), encoding="utf-8") as handle:
+                count = len(handle.read().splitlines())
+            note = blurb(path) or ""
+            if len(note) > 110:
+                note = note[:107].rsplit(" ", 1)[0] + "..."
+            lines.append(f"| [`{path}`](#{anchor(path)}) | {count:,} | "
+                         f"{note} |")
+    return lines
 
 
 def main(argv=None) -> int:
@@ -298,21 +599,51 @@ def main(argv=None) -> int:
                         default="pet",
                         help="which generator to export (default: pet)")
     parser.add_argument("-o", "--output", default=None)
+    parser.add_argument("--plain", action="store_true",
+                        help="just the code, without the architecture "
+                             "chapter and the per file outlines")
     args = parser.parse_args(argv)
 
     product = PRODUCTS[args.product]
     sections = product["sections"]
+    detailed = not args.plain
 
     lines = [f"# {product['title']} — source code", "",
              product["subtitle"], ""]
     lines += product["intro"]
     lines += ["", "---", "", "## Contents", ""]
 
+    if detailed:
+        lines += ["* [0. How it is put together](#0-how-it-is-put-together)",
+                  "  * [The build pipeline](#the-build-pipeline)",
+                  "  * [Describing a column](#describing-a-column)",
+                  "  * [The rules every formula obeys]"
+                  "(#the-rules-every-formula-obeys)",
+                  "  * [The hidden `Calc` tab](#the-hidden-calc-tab)",
+                  "  * [Every tab at a glance](#every-tab-at-a-glance)",
+                  "  * [Every file at a glance](#every-file-at-a-glance)"]
     for heading, _intro, paths in sections:
         lines.append(f"* [{heading}](#{anchor(heading)})")
         for path in paths:
             lines.append(f"  * [`{path}`](#{anchor(path)})")
+    if detailed:
+        lines.append("* [Appendix A. Data dictionary]"
+                     "(#appendix-a-data-dictionary)")
     lines += ["", "---", ""]
+
+    if detailed:
+        lines += ["## 0. How it is put together", ""]
+        lines += [ARCHITECTURE.format(builder=product["builder"],
+                                      package=product["package"]), ""]
+        tabs = tab_table(product)
+        if tabs:
+            lines += ["### Every tab at a glance", "",
+                      f"{product['tabs']} tabs in the order they appear in "
+                      f"the finished workbook. \"Rows\" is the capacity of "
+                      f"a register at the default `--rows` setting.", ""]
+            lines += tabs + [""]
+        lines += ["### Every file at a glance", ""]
+        lines += file_table(sections) + ["", "---", ""]
 
     total = 0
     for heading, intro, paths in sections:
@@ -323,18 +654,68 @@ def main(argv=None) -> int:
                 code = handle.read().rstrip("\n")
             count = len(code.splitlines())
             total += count
-            note = blurb(path)
             lines.append(f"### `{path}`")
             lines.append("")
-            if note:
-                lines.append(f"{note}. *({count} lines)*")
+            if detailed:
+                items = outline(path)
+                classes = sum(1 for kind, _n, _d in items
+                              if kind == "class")
+                functions = sum(1 for kind, _n, _d in items
+                                if kind == "function")
+                stats = [f"{count:,} lines"]
+                if classes:
+                    stats.append(f"{classes} class"
+                                 f"{'es' if classes > 1 else ''}")
+                if functions:
+                    stats.append(f"{functions} function"
+                                 f"{'s' if functions > 1 else ''}")
+                lines += [f"*{' · '.join(stats)}*", ""]
+                doc = full_docstring(path)
+                if doc:
+                    lines += ["> " + line if line else ">"
+                              for line in doc.splitlines()]
+                    lines.append("")
+                named = [item for item in items if item[0] != "constant"]
+                constants = [item for item in items if item[0] == "constant"]
+                if named:
+                    lines += ["| Defines | What it does |",
+                              "|---------|--------------|"]
+                    for kind, name, note in named:
+                        tag = "class " if kind == "class" else ""
+                        lines.append(f"| `{tag}{name}` | {note} |")
+                    lines.append("")
+                if constants:
+                    text = ", ".join(f"`{name}` ({note})" if note
+                                     else f"`{name}`"
+                                     for _k, name, note in constants[:14])
+                    more = (f" and {len(constants) - 14} more"
+                            if len(constants) > 14 else "")
+                    lines += [f"**Module constants:** {text}{more}.", ""]
             else:
-                lines.append(f"*({count} lines)*")
+                note = blurb(path)
+                if note:
+                    lines.append(f"{note}. *({count} lines)*")
+                else:
+                    lines.append(f"*({count} lines)*")
+                lines.append("")
             # four backticks, so a fence inside a docstring cannot
             # close the block early
-            lines += ["", "````python", code, "````", ""]
+            lines += ["````python", code, "````", ""]
         lines.append("---")
         lines.append("")
+
+    if detailed:
+        dictionary = data_dictionary(product)
+        if dictionary:
+            lines += ["## Appendix A. Data dictionary", "",
+                      "Every column of every register tab, straight from "
+                      "the specs that build them: the Excel column letter, "
+                      "the header a buyer sees, the key formulas use, the "
+                      "number format and whether the cell is typed in, "
+                      "chosen from a drop down or calculated. Pages "
+                      "(dashboards, reports, printables) are not listed - "
+                      "they have no fixed grid.", ""]
+            lines += dictionary + ["---", ""]
 
     lines += [f"*{total:,} lines of Python in "
               f"{sum(len(p) for _h, _i, p in sections)} files.*", ""]
