@@ -1,0 +1,400 @@
+"""Cross-check the example records in a generated handmade workbook.
+
+The demo data has to join up, otherwise the dashboard opens full of
+zeros and every lookup fills with "Not found".  This reads the literal
+values out of the finished file - never the formula columns - and makes
+sure every bill of materials line points at a real material, every sale
+at a real product, every wholesale order at a real stockist, that the
+shipping option typed against a product matches a real postage band,
+and that no product is costed twice over (once on its specialist tab
+and again through the bill of materials), which would silently double
+its cost.
+
+    python tools/check_handmade_sample.py output/pricing.xlsx
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from collections import Counter
+
+import openpyxl
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+HEADER_ROW = 4
+
+#: the six specialist calculators, which cost a product instead of the
+#: bill of materials doing it
+CRAFT_SHEETS = ["Crochet", "Jewelry", "Candles", "Clothing",
+                "Woodworking", "Digital"]
+
+
+def data_rows() -> dict:
+    """Last data row of every register, straight from its specification.
+
+    Without this the checks read whatever sits underneath the grid and
+    report a summary label as a missing material.
+    """
+    from handmade_pricing_spreadsheet.build import REGISTER_MODULES
+    from handmade_pricing_spreadsheet.config import Config
+    cfg = Config()
+    return {module.NAME: module.spec(cfg).last_data_row + 1
+            for module in REGISTER_MODULES}
+
+
+LAST_ROW: dict = {}
+
+
+def headers(ws, header_row: int = HEADER_ROW) -> dict:
+    out = {}
+    for cell in ws[header_row]:
+        if isinstance(cell.value, str) and cell.value.strip():
+            out.setdefault(cell.value.strip(), cell.column)
+    return out
+
+
+def column_values(ws, header: str, header_row: int = HEADER_ROW) -> list:
+    """Every non-empty literal value under the given header."""
+    found = headers(ws, header_row)
+    if header not in found:
+        near = [name for name in found if name.startswith(header)]
+        if len(near) != 1:
+            raise KeyError(f"{ws.title}: no column called {header!r} "
+                           f"(have {sorted(found)[:10]} ...)")
+        header = near[0]
+    col = found[header]
+    out = []
+    last = min(LAST_ROW.get(ws.title, ws.max_row), ws.max_row)
+    for row in range(header_row + 1, last + 1):
+        value = ws.cell(row=row, column=col).value
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+            if not value or value.startswith("="):
+                continue
+        out.append(value)
+    return out
+
+
+def row_dicts(ws, wanted: list) -> list:
+    """The literal values of the named columns, row by row."""
+    found = headers(ws)
+    missing = [name for name in wanted if name not in found]
+    if missing:
+        raise KeyError(f"{ws.title}: no column called {missing[0]!r}")
+    last = min(LAST_ROW.get(ws.title, ws.max_row), ws.max_row)
+    rows = []
+    for row in range(HEADER_ROW + 1, last + 1):
+        record = {}
+        for name in wanted:
+            value = ws.cell(row=row, column=found[name]).value
+            if isinstance(value, str):
+                value = value.strip()
+                if value.startswith("="):
+                    value = None
+            record[name] = value or None
+        if any(v is not None for v in record.values()):
+            rows.append(record)
+    return rows
+
+
+def check(path: str) -> int:
+    LAST_ROW.update(data_rows())
+    wb = openpyxl.load_workbook(path, data_only=False)
+    problems: list = []
+    notes: list = []
+
+    def sheet(name):
+        if name not in wb.sheetnames:
+            problems.append(f"missing sheet {name}")
+            return None
+        return wb[name]
+
+    products = sheet("Products")
+    materials = sheet("Materials")
+    if products is None or materials is None:
+        for problem in problems:
+            print(f"    - {problem}")
+        return 1
+
+    product_names = column_values(products, "Product")
+    material_names = column_values(materials, "Material")
+    channel_names = column_values(sheet("Channels"), "Channel")
+    notes.append(f"{len(product_names)} products, {len(material_names)} "
+                 f"materials, {len(channel_names)} channels")
+    for label, values in (("product", product_names),
+                          ("material", material_names),
+                          ("channel", channel_names)):
+        duplicates = [v for v, n in Counter(values).items() if n > 1]
+        if duplicates:
+            problems.append(f"duplicate {label} names: {duplicates[:5]}")
+
+    def id_link(from_sheet: str, from_col: str, to_sheet: str,
+                count_col: str) -> None:
+        """IDs are generated by formulas, so check the number is a row."""
+        src, dst = sheet(from_sheet), sheet(to_sheet)
+        if src is None or dst is None:
+            return
+        try:
+            values = [str(v) for v in column_values(src, from_col)]
+            limit = len(column_values(dst, count_col))
+        except KeyError as error:
+            problems.append(str(error))
+            return
+        bad = []
+        for value in values:
+            digits = "".join(c for c in value if c.isdigit())
+            if not digits or not 1 <= int(digits) <= limit:
+                bad.append(value)
+        if bad:
+            problems.append(
+                f"{from_sheet}.{from_col}: {len(bad)} reference(s) point "
+                f"past the {limit} rows on {to_sheet} -> "
+                f"{sorted(set(bad))[:5]}")
+        else:
+            notes.append(f"{from_sheet}.{from_col} -> {to_sheet} "
+                         f"({len(values)} rows, max {limit}) ok")
+
+    def link(from_sheet: str, from_col: str, to_sheet: str,
+             to_col: str) -> None:
+        src, dst = sheet(from_sheet), sheet(to_sheet)
+        if src is None or dst is None:
+            return
+        try:
+            values = column_values(src, from_col)
+            allowed = set(column_values(dst, to_col))
+        except KeyError as error:
+            problems.append(str(error))
+            return
+        missing = sorted({str(v) for v in values}
+                         - {str(a) for a in allowed})
+        if missing:
+            problems.append(
+                f"{from_sheet}.{from_col}: {len(missing)} value(s) not in "
+                f"{to_sheet}.{to_col} -> {missing[:5]}")
+        else:
+            notes.append(f"{from_sheet}.{from_col} -> {to_sheet}.{to_col} "
+                         f"({len(values)} rows) ok")
+
+    # ---- the costing spine ------------------------------------------
+    id_link("Material Usage", "Product", "Products", "Product")
+    id_link("Material Usage", "Material", "Materials", "Material")
+    id_link("Labor", "Product", "Products", "Product")
+    id_link("Bundle Lines", "Bundle", "Bundles", "Bundle")
+    id_link("Bundle Lines", "Product", "Products", "Product")
+    id_link("Variations", "Base product", "Products", "Product")
+    id_link("Batches", "Product", "Products", "Product")
+    id_link("Sales", "Product", "Products", "Product")
+    id_link("Price History", "Product", "Products", "Product")
+    id_link("Competitors", "Your product", "Products", "Product")
+    id_link("Waste Log", "Material", "Materials", "Material")
+    id_link("Waste Log", "On which product", "Products", "Product")
+    id_link("Development", "Became product", "Products", "Product")
+    id_link("Wholesale Orders", "Customer", "Wholesale Customers", "Shop")
+    id_link("Wholesale Orders", "Product", "Products", "Product")
+    for craft in CRAFT_SHEETS:
+        id_link(craft, "Product ID", "Products", "Product")
+
+    # ---- drop down values that have to match a row somewhere ---------
+    link("Products", "Main channel", "Channels", "Channel")
+    link("Sales", "Channel", "Channels", "Channel")
+    link("Sales", "Promo code", "Promotions", "Code")
+    link("Sales", "Event", "Events", "Event")
+    link("Bundles", "Channel", "Channels", "Channel")
+    link("Price History", "Channel", "Channels", "Channel")
+    id_link("Crochet", "Main yarn", "Materials", "Material")
+    id_link("Candles", "Wax material", "Materials", "Material")
+    id_link("Jewelry", "Metal material", "Materials", "Material")
+    id_link("Clothing", "Fabric material", "Materials",
+            "Material")
+    id_link("Woodworking", "Timber material", "Materials",
+            "Material")
+
+    # ---- the shipping option is a built label, so rebuild it ---------
+    ship = sheet("Shipping")
+    if ship is not None:
+        bands = row_dicts(ship, ["Service", "Zone", "Up to (g)"])
+        labels = set()
+        for band in bands:
+            if not band["Service"]:
+                continue
+            label = f"{band['Service']} - {band['Zone']}"
+            if band["Up to (g)"]:
+                label += f" to {int(band['Up to (g)']):,}g"
+            labels.add(label)
+        used = set(column_values(products, "Shipping option"))
+        unknown = sorted(used - labels)
+        if unknown:
+            problems.append(
+                f"Products.Shipping option: {len(unknown)} value(s) match "
+                f"no postage band -> {unknown[:3]}")
+        else:
+            notes.append(f"{len(used)} shipping options used, all of them "
+                         f"real bands")
+
+    # ---- nothing may be costed twice --------------------------------
+    bom_products = {str(v) for v in column_values(sheet("Material Usage"),
+                                                  "Product")}
+    bom_products |= {str(v) for v in column_values(sheet("Labor"),
+                                                   "Product")}
+    craft_products: dict = {}
+    for craft in CRAFT_SHEETS:
+        ws = sheet(craft)
+        if ws is None:
+            continue
+        for value in column_values(ws, "Product ID"):
+            craft_products.setdefault(str(value), []).append(craft)
+    both = sorted(bom_products & set(craft_products))
+    if both:
+        problems.append(
+            f"{len(both)} product(s) are costed twice - bill of materials "
+            f"and a specialist tab -> {both[:4]}")
+    else:
+        notes.append(f"{len(bom_products)} products costed from the bill "
+                     f"of materials, {len(craft_products)} on a "
+                     f"specialist tab, none on both")
+    twice = sorted(k for k, v in craft_products.items() if len(v) > 1)
+    if twice:
+        problems.append(f"product(s) on two specialist tabs: {twice[:4]}")
+
+    # every priced product needs costs behind it, or the margin is 100%
+    priced = row_dicts(products, ["Product", "Your price"])
+    costed = bom_products | set(craft_products)
+    uncosted = []
+    for index, record in enumerate(priced, start=1):
+        if record["Your price"] is None:
+            continue
+        if f"P-{index:04d}" not in costed:
+            uncosted.append(record["Product"])
+    if uncosted:
+        problems.append(
+            f"{len(uncosted)} priced product(s) have no materials and no "
+            f"labour, so they look pure profit -> {uncosted[:4]}")
+    else:
+        notes.append(f"{len(priced)} catalog rows, every priced one has "
+                     f"costs behind it")
+
+    # ---- enough of everything to make the tabs look alive ------------
+    for name, header, least, label in (
+            ("Products", "Product", 10, "products"),
+            ("Materials", "Material", 18, "materials"),
+            ("Material Usage", "Quantity used", 10, "bill of material lines"),
+            ("Labor", "Minutes", 12, "labour rows"),
+            ("Packaging", "Component", 8, "packaging components"),
+            ("Shipping", "Service", 6, "postage bands"),
+            ("Overhead", "Cost", 8, "overhead costs"),
+            ("Channels", "Channel", 5, "sales channels"),
+            ("Bundles", "Bundle", 3, "bundles"),
+            ("Bundle Lines", "Quantity", 5, "bundle lines"),
+            ("Variations", "Variation", 4, "variations"),
+            ("Batches", "Planned", 4, "production batches"),
+            ("Sales", "Date", 40, "sales"),
+            ("Promotions", "Code", 3, "promotions"),
+            ("Price History", "New price", 6, "price changes"),
+            ("Competitors", "Their item", 8, "competitor prices"),
+            ("Waste Log", "Quantity lost", 8, "waste entries"),
+            ("Development", "Design", 5, "development projects"),
+            ("Events", "Event", 3, "craft fairs"),
+            ("Wholesale Customers", "Shop", 4, "stockists"),
+            ("Wholesale Orders", "Quantity", 8, "wholesale orders")):
+        ws = sheet(name)
+        if ws is None:
+            continue
+        try:
+            values = column_values(ws, header)
+        except KeyError as error:
+            problems.append(str(error))
+            continue
+        if len(values) < least:
+            problems.append(f"only {len(values)} {label} - expected at "
+                            f"least {least}")
+        else:
+            notes.append(f"{len(values)} {label}")
+
+    # the six specialist tabs each need a worked example
+    for craft in CRAFT_SHEETS:
+        ws = sheet(craft)
+        if ws is None:
+            continue
+        header = "Piece" if craft in ("Crochet", "Woodworking") else {
+            "Jewelry": "Piece", "Candles": "Candle", "Clothing": "Garment",
+            "Digital": "Download"}[craft]
+        rows = column_values(ws, header)
+        if len(rows) < 2:
+            problems.append(f"only {len(rows)} worked example(s) on the "
+                            f"{craft} tab - a buyer wants to see it full")
+
+    # ---- the sales ledger has to look like a trading year ------------
+    sales = sheet("Sales")
+    dates = [v for v in column_values(sales, "Date") if hasattr(v, "year")]
+    if len(dates) < 40:
+        problems.append(f"only {len(dates)} example sales")
+    else:
+        span = (max(dates) - min(dates)).days + 1
+        if span < 90:
+            problems.append(f"the sales only span {span} days - the "
+                            f"monthly charts need a year of them")
+        else:
+            notes.append(f"{len(dates)} sales over {span} days "
+                         f"({min(dates):%d %b} to {max(dates):%d %b})")
+    months = Counter(f"{d:%Y-%m}" for d in dates)
+    if len(months) < 4:
+        problems.append(f"the sales only touch {len(months)} month(s)")
+    else:
+        notes.append(f"sales across {len(months)} months, busiest "
+                     f"{months.most_common(1)[0][0]} with "
+                     f"{months.most_common(1)[0][1]}")
+    channels = Counter(column_values(sales, "Channel"))
+    if len(channels) < 3:
+        problems.append("the sales all come through "
+                        f"{len(channels)} channel(s) - the channel mix "
+                        f"on the dashboard needs more")
+    else:
+        notes.append("sales by channel: " + ", ".join(
+            f"{k} {v}" for k, v in channels.most_common(4)))
+
+    # prices and costs: a material with no pack price costs nothing
+    packs = row_dicts(materials, ["Material", "Quantity in a pack",
+                                  "Pack price"])
+    blank = [p["Material"] for p in packs
+             if p["Material"] and (not p["Quantity in a pack"]
+                                   or not p["Pack price"])]
+    if blank:
+        problems.append(f"{len(blank)} material(s) have no pack price or "
+                        f"quantity, so they cost nothing -> {blank[:4]}")
+    else:
+        notes.append(f"all {len(packs)} materials have a pack price and a "
+                     f"pack quantity")
+
+    # fees must carry a review date, because they go out of date
+    reviewed = column_values(sheet("Channels"), "Fees checked")
+    if len(reviewed) < len(channel_names):
+        problems.append(f"only {len(reviewed)} of {len(channel_names)} "
+                        f"channels have a fees-checked date")
+    else:
+        notes.append(f"all {len(reviewed)} channels carry a "
+                     f"fees-checked date")
+
+    print(f"--- {path}")
+    for note in notes:
+        print(f"  . {note}")
+    if problems:
+        print(f"  ! {len(problems)} problem(s):")
+        for problem in problems[:30]:
+            print(f"    - {problem}")
+        return 1
+    print("  OK - the example data joins up")
+    return 0
+
+
+def main(argv: list) -> int:
+    targets = argv[1:] or ["output/Handmade Product Pricing & Profit "
+                           "Calculator.xlsx"]
+    return max(check(path) for path in targets)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

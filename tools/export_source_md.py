@@ -573,8 +573,182 @@ CLEANING = {
     "sections": CLEANING_SECTIONS,
 }
 
+# ---------------------------------------------------------------------------
+# Product E - handmade product pricing calculator
+# ---------------------------------------------------------------------------
+
+_MAKE = "handmade_pricing_spreadsheet"
+
+HANDMADE_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_handmade_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Handmade Product Pricing & Profit Calculator.xlsx`.",
+     ["build_handmade_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the sheet "
+     "writer, the cross sheet names and the demo shop. These are the "
+     "parts every tab leans on.",
+     [f"{_MAKE}/__init__.py",
+      f"{_MAKE}/__main__.py",
+      f"{_MAKE}/cli.py",
+      f"{_MAKE}/config.py",
+      f"{_MAKE}/layout.py",
+      f"{_MAKE}/formats.py",
+      f"{_MAKE}/writer.py",
+      f"{_MAKE}/names.py",
+      f"{_MAKE}/build.py",
+      f"{_MAKE}/sample_data.py"]),
+    ("3. The costing registers",
+     "One module per data tab. Each returns a `SheetSpec` - a list of "
+     "columns with their formulas - and the writer turns that into a "
+     "formatted, validated, protected sheet. These are the chain that "
+     "turns a pile of materials and a number of minutes into a price: "
+     "the catalog, the materials and the bill of materials, labour, "
+     "packaging, postage, overhead and the marketplace fee table.",
+     [f"{_MAKE}/sheets/__init__.py",
+      f"{_MAKE}/sheets/common.py",
+      f"{_MAKE}/sheets/lists.py",
+      f"{_MAKE}/sheets/products.py",
+      f"{_MAKE}/sheets/materials.py",
+      f"{_MAKE}/sheets/material_usage.py",
+      f"{_MAKE}/sheets/labor.py",
+      f"{_MAKE}/sheets/packaging.py",
+      f"{_MAKE}/sheets/shipping.py",
+      f"{_MAKE}/sheets/overhead.py",
+      f"{_MAKE}/sheets/channels.py"]),
+    ("4. The six craft calculators",
+     "The reason this is not a generic costing sheet. Crochet costs yarn "
+     "by the gram, jewelry works in metal weight and scrap recovery, "
+     "candles fill a vessel and dose the fragrance, clothing cuts fabric "
+     "with a layout allowance, woodworking carries offcut waste and "
+     "machine time, and a digital download spreads its design hours over "
+     "the sales it expects.",
+     [f"{_MAKE}/sheets/crochet.py",
+      f"{_MAKE}/sheets/jewelry.py",
+      f"{_MAKE}/sheets/candles.py",
+      f"{_MAKE}/sheets/clothing.py",
+      f"{_MAKE}/sheets/woodworking.py",
+      f"{_MAKE}/sheets/digital.py"]),
+    ("5. The selling registers",
+     "What happens to a product once it has a price: bundles and their "
+     "lines, variations and custom orders, batch production, the sales "
+     "ledger, promotions, price history, competitor prices, the waste "
+     "log, development cost recovery, craft fairs, stockists and "
+     "wholesale orders.",
+     [f"{_MAKE}/sheets/bundles.py",
+      f"{_MAKE}/sheets/bundle_lines.py",
+      f"{_MAKE}/sheets/variations.py",
+      f"{_MAKE}/sheets/batches.py",
+      f"{_MAKE}/sheets/sales.py",
+      f"{_MAKE}/sheets/promotions.py",
+      f"{_MAKE}/sheets/price_history.py",
+      f"{_MAKE}/sheets/competitors.py",
+      f"{_MAKE}/sheets/waste.py",
+      f"{_MAKE}/sheets/development.py",
+      f"{_MAKE}/sheets/events.py",
+      f"{_MAKE}/sheets/wholesale_customers.py",
+      f"{_MAKE}/sheets/wholesale_orders.py"]),
+    ("6. The pages",
+     "The tabs that read the registers: the welcome page, settings, the "
+     "dashboard, the retail price calculator, the wholesale calculator, "
+     "profit and break-even, the pricing scenarios, the reports, the "
+     "three printables and the help tab.",
+     [f"{_MAKE}/sheets/start_here.py",
+      f"{_MAKE}/sheets/settings.py",
+      f"{_MAKE}/sheets/dashboard.py",
+      f"{_MAKE}/sheets/retail_calc.py",
+      f"{_MAKE}/sheets/wholesale_calc.py",
+      f"{_MAKE}/sheets/break_even.py",
+      f"{_MAKE}/sheets/scenarios.py",
+      f"{_MAKE}/sheets/reports.py",
+      f"{_MAKE}/sheets/printables.py",
+      f"{_MAKE}/sheets/help_tab.py"]),
+    ("7. Quality checks (optional)",
+     "Not needed to build the workbook - these are the checks that keep "
+     "it honest. The first two need `openpyxl`, the third needs "
+     "`formulas`.",
+     ["tools/validate_handmade_workbook.py",
+      "tools/check_handmade_sample.py",
+      "tools/recalc_check.py"] + SHARED_TOOLS),
+]
+
+HANDMADE = {
+    "package": "handmade_pricing_spreadsheet",
+    "builder": "build_handmade_workbook.py",
+    "doc": "README_HANDMADE.md",
+    "tabs": 40,
+    "title": "Handmade Product Pricing & Profit Calculator",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_HANDMADE.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on Start Here, not on the Lists tab."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 40 tab `.xlsx` workbook with over 97,000 formulas: a "
+        "product catalog, a material library costed to four decimal "
+        "places, a bill of materials, labour by the minute, packaging "
+        "profiles, a postage rate card, overhead allocation, an editable "
+        "marketplace fee table, a retail price calculator, a wholesale "
+        "calculator, profit and break-even, six craft specific "
+        "calculators (crochet, jewelry, candles, clothing, woodworking "
+        "and digital downloads), bundles, variations, batch production, "
+        "a sales ledger with estimated against actual fees, promotions, "
+        "price history, competitor research, a waste log, development "
+        "cost recovery, craft fairs, stockists, wholesale orders, "
+        "pricing scenarios, reports, three printables and a help tab. "
+        "Document author is **Novality Store**; every formula cell is "
+        "locked and every sheet protected with the password "
+        "**`premium`**, while the cells you are meant to type in stay "
+        "open.",
+        "",
+        "The pricing is the point: cost is materials plus labour plus "
+        "packaging plus postage plus overhead, and the price is "
+        "`(cost + fixed fees) / (1 - target margin - fee rate)` - a "
+        "division, not an addition, so the marketplace percentage comes "
+        "out of the price rather than out of your profit.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and on "
+        "the much older 0.3.0, so it does not rely on anything recent. "
+        "The workbook itself is Excel 2010 safe \u2014 no dynamic arrays, "
+        "no `XLOOKUP`, no `IFS`, nothing that needs array entry \u2014 and "
+        "it opens in Google Sheets, LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_handmade_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --shop TEXT           shop name on the cover and printables",
+        "  --owner TEXT          the maker's name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --year YYYY           the year the reports open on",
+        "  --rate AMOUNT         what you pay yourself an hour",
+        "  --margin PERCENT      target retail margin",
+        "  --wholesale PERCENT   the discount a stockist gets off retail",
+        "  --overhead AMOUNT     overhead a month, if you would rather",
+        "                        type it than list it",
+        "  --hours N             productive hours a month",
+        "  --rounding RULE       how a calculated price is rounded",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the demo data)",
+        "```",
+    ],
+    "sections": HANDMADE_SECTIONS,
+}
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
-            "cleaning": CLEANING}
+            "cleaning": CLEANING, "handmade": HANDMADE}
 
 
 # ---------------------------------------------------------------------------
