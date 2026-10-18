@@ -287,13 +287,13 @@ The ranks in use: `Ingredients.need_rank` (what to buy next),
 | [`cleaning_business_spreadsheet/__init__.py`](#cleaning_business_spreadsheet__init__py) | 19 | Cleaning Business CRM & Pricing Calculator |
 | [`cleaning_business_spreadsheet/__main__.py`](#cleaning_business_spreadsheet__main__py) | 6 | ``python -m cleaning_business_spreadsheet`` |
 | [`cleaning_business_spreadsheet/cli.py`](#cleaning_business_spreadsheetclipy) | 154 | Command line front end |
-| [`cleaning_business_spreadsheet/config.py`](#cleaning_business_spreadsheetconfigpy) | 292 | Configuration for the Cleaning Business CRM & Pricing Calculator |
+| [`cleaning_business_spreadsheet/config.py`](#cleaning_business_spreadsheetconfigpy) | 315 | Configuration for the Cleaning Business CRM & Pricing Calculator |
 | [`cleaning_business_spreadsheet/layout.py`](#cleaning_business_spreadsheetlayoutpy) | 253 | Layout engine |
 | [`cleaning_business_spreadsheet/formats.py`](#cleaning_business_spreadsheetformatspy) | 200 | Cell format factory |
 | [`cleaning_business_spreadsheet/writer.py`](#cleaning_business_spreadsheetwriterpy) | 457 | Sheet writing helpers shared by every tab of the workbook |
 | [`cleaning_business_spreadsheet/names.py`](#cleaning_business_spreadsheetnamespy) | 53 | Workbook level defined names that point at the register sheets |
 | [`cleaning_business_spreadsheet/build.py`](#cleaning_business_spreadsheetbuildpy) | 163 | Workbook builder: puts every tab together in the right order |
-| [`cleaning_business_spreadsheet/sample_data.py`](#cleaning_business_spreadsheetsample_datapy) | 1,813 | Demo data: a month in the life of Bright & Tidy Cleaning Co |
+| [`cleaning_business_spreadsheet/sample_data.py`](#cleaning_business_spreadsheetsample_datapy) | 1,855 | Demo data: a month in the life of Bright & Tidy Cleaning Co |
 | [`cleaning_business_spreadsheet/sheets/__init__.py`](#cleaning_business_spreadsheetsheets__init__py) | 6 | One module per tab |
 | [`cleaning_business_spreadsheet/sheets/common.py`](#cleaning_business_spreadsheetsheetscommonpy) | 267 | Small building blocks shared by the register sheets |
 | [`cleaning_business_spreadsheet/sheets/lists.py`](#cleaning_business_spreadsheetsheetslistspy) | 386 | `Lists` - every drop down in the workbook, plus the pricing factor tables |
@@ -322,16 +322,16 @@ The ranks in use: `Ingredients.need_rank` (what to buy next),
 | [`cleaning_business_spreadsheet/sheets/incidents.py`](#cleaning_business_spreadsheetsheetsincidentspy) | 96 | `Incidents` - accidents, near misses and damage |
 | [`cleaning_business_spreadsheet/sheets/safety.py`](#cleaning_business_spreadsheetsheetssafetypy) | 113 | `Safety & Compliance` - the paperwork that has to be in date |
 | [`cleaning_business_spreadsheet/sheets/start_here.py`](#cleaning_business_spreadsheetsheetsstart_herepy) | 294 | `Start Here` - the first thing anyone sees when they open the file |
-| [`cleaning_business_spreadsheet/sheets/dashboard.py`](#cleaning_business_spreadsheetsheetsdashboardpy) | 373 | `Dashboard` - the one page that answers 'how is the business doing?' Twelve numbers across the top, a list... |
+| [`cleaning_business_spreadsheet/sheets/dashboard.py`](#cleaning_business_spreadsheetsheetsdashboardpy) | 375 | `Dashboard` - the one page that answers 'how is the business doing?' Twelve numbers across the top, a list... |
 | [`cleaning_business_spreadsheet/sheets/quote_calc.py`](#cleaning_business_spreadsheetsheetsquote_calcpy) | 424 | `Quote Calculator` - price a clean in thirty seconds, honestly |
 | [`cleaning_business_spreadsheet/sheets/calendar_page.py`](#cleaning_business_spreadsheetsheetscalendar_pagepy) | 176 | `Calendar` - the month at a glance, and the next jobs in order |
 | [`cleaning_business_spreadsheet/sheets/staff_schedule.py`](#cleaning_business_spreadsheetsheetsstaff_schedulepy) | 305 | `Staff Schedule` - the week's rota, and who has room for one more |
 | [`cleaning_business_spreadsheet/sheets/retention.py`](#cleaning_business_spreadsheetsheetsretentionpy) | 233 | `Client Retention` - keeping the clients you already have |
 | [`cleaning_business_spreadsheet/sheets/reports.py`](#cleaning_business_spreadsheetsheetsreportspy) | 379 | `Reports & Analytics` - the questions a cleaning business should ask |
-| [`cleaning_business_spreadsheet/sheets/financial.py`](#cleaning_business_spreadsheetsheetsfinancialpy) | 331 | `Financial Plan` - targets, break-even and what if you grew |
+| [`cleaning_business_spreadsheet/sheets/financial.py`](#cleaning_business_spreadsheetsheetsfinancialpy) | 341 | `Financial Plan` - targets, break-even and what if you grew |
 | [`cleaning_business_spreadsheet/sheets/printables.py`](#cleaning_business_spreadsheetsheetsprintablespy) | 538 | The three printable forms |
 | [`cleaning_business_spreadsheet/sheets/help_tab.py`](#cleaning_business_spreadsheetsheetshelp_tabpy) | 255 | `Help` - troubleshooting, a glossary and a map of every feature |
-| [`tools/validate_cleaning_workbook.py`](#toolsvalidate_cleaning_workbookpy) | 436 | Static checks on a generated Cleaning Business workbook |
+| [`tools/validate_cleaning_workbook.py`](#toolsvalidate_cleaning_workbookpy) | 537 | Static checks on a generated Cleaning Business workbook |
 | [`tools/check_cleaning_sample.py`](#toolscheck_cleaning_samplepy) | 309 | Cross-check the example records in a generated cleaning workbook |
 | [`tools/recalc_check.py`](#toolsrecalc_checkpy) | 216 | Really calculate every formula in a generated workbook and report any cell that ends up as an Excel error... |
 | [`tools/export_source_md.py`](#toolsexport_source_mdpy) | 1,076 | Write every source file of a generator into one markdown document |
@@ -618,7 +618,7 @@ if __name__ == "__main__":        # pragma: no cover
 
 ### `cleaning_business_spreadsheet/config.py`
 
-*292 lines · 3 classes*
+*315 lines · 3 classes*
 
 > Configuration for the Cleaning Business CRM & Pricing Calculator.
 >
@@ -861,6 +861,13 @@ class Config:
     monthly_revenue_target: float = 26000.0
     annual_revenue_target: float = 312000.0
     monthly_expense_budget: float = 15000.0
+    # the example company is a smaller operation than the defaults
+    # assume, so the demo file carries targets it can be measured
+    # against - a dashboard showing 16% of target teaches nobody
+    # anything
+    sample_monthly_revenue_target: float = 6000.0
+    sample_annual_revenue_target: float = 72000.0
+    sample_monthly_expense_budget: float = 4000.0
     utilisation_target: float = 0.75     # share of paid hours that are billed
     retention_target: float = 0.85
     satisfaction_target: float = 4.5     # out of 5
@@ -888,6 +895,22 @@ class Config:
     @property
     def year(self) -> int:
         return self.plan_year or self.today.year
+
+    @property
+    def revenue_target_month(self) -> float:
+        """Monthly revenue target, scaled to whoever is reading it."""
+        return (self.sample_monthly_revenue_target
+                if self.include_sample_data else self.monthly_revenue_target)
+
+    @property
+    def revenue_target_year(self) -> float:
+        return (self.sample_annual_revenue_target
+                if self.include_sample_data else self.annual_revenue_target)
+
+    @property
+    def expense_budget_month(self) -> float:
+        return (self.sample_monthly_expense_budget
+                if self.include_sample_data else self.monthly_expense_budget)
 
     @property
     def imperial(self) -> bool:
@@ -2197,7 +2220,7 @@ def _set_properties(book, cfg: Config) -> None:
 
 ### `cleaning_business_spreadsheet/sample_data.py`
 
-*1,813 lines · 1 class · 11 functions*
+*1,855 lines · 1 class · 11 functions*
 
 > Demo data: a month in the life of Bright & Tidy Cleaning Co.
 >
@@ -2226,7 +2249,7 @@ def _set_properties(book, cfg: Config) -> None:
 | `_build(cfg)` |  |
 | `_job_price(cfg, job)` | Mirror the Jobs price formula closely enough for the demo totals |
 
-**Module constants:** `CLIENTS` (15 items), `PROPERTIES` (16 items), `SERVICES` (21 items), `EMPLOYEES` (8 items), `PROPERTY_EXTRA` (16 entries), `ENTRY_NOTES` (11 entries), `CHECKLIST_TASKS` (7 entries), `SUPPLIES` (16 items), `EQUIPMENT` (12 items), `SAFETY_DOCS` (16 items), `LEADS` (10 items), `QUOTES` (8 items), `ROUND` (16 items), `ROUND_STOPS` (1 entries) and 5 more.
+**Module constants:** `CLIENTS` (15 items), `PROPERTIES` (16 items), `SERVICES` (21 items), `EMPLOYEES` (8 items), `PROPERTY_EXTRA` (16 entries), `ENTRY_NOTES` (11 entries), `CHECKLIST_TASKS` (7 entries), `SUPPLIES` (16 items), `EQUIPMENT` (12 items), `SAFETY_DOCS` (16 items), `LEADS` (10 items), `QUOTES` (8 items), `ROUND` (16 items), `ROUND_STOPS` (1 entries) and 6 more.
 
 ````python
 """Demo data: a month in the life of Bright & Tidy Cleaning Co.
@@ -3235,12 +3258,16 @@ ONE_OFFS = [
 # ---------------------------------------------------------------------------
 # category, type, description, supplier, amount, tax, method, receipt,
 # recurring, deductible, day of month, months back
+#: service name -> the hours one cleaner is expected to take, so the
+#: demo timesheets can be built from the same figure the price uses
+SERVICE_HOURS = {row[0]: row[3] for row in SERVICES}
+
 MONTHLY_COSTS = [
     ("Business insurance", "Fixed monthly", "Public and employer "
      "liability", "Hiscox", 66.00, 0.0, "Direct debit", "Yes", "Yes",
      "Yes", 1),
     ("Vehicle insurance", "Fixed monthly", "Van 1 and van 2 fleet "
-     "policy", "Admiral Business", 189.00, 0.0, "Direct debit", "Yes",
+     "policy", "Admiral Business", 150.00, 0.0, "Direct debit", "Yes",
      "Yes", "Yes", 1),
     ("Software & apps", "Fixed monthly", "Accounting software and "
      "cloud storage", "Ledgerly", 32.00, 0.0, "Card", "Yes", "Yes",
@@ -3248,25 +3275,25 @@ MONTHLY_COSTS = [
     ("Phone & internet", "Fixed monthly", "Two business mobiles",
      "Telecom NW", 58.00, 0.0, "Direct debit", "Yes", "Yes", "Yes", 5),
     ("Marketing & advertising", "Fixed monthly", "Google Ads - local "
-     "cleaning searches", "Google", 240.00, 0.0, "Card", "Yes", "Yes",
+     "cleaning searches", "Google", 120.00, 0.0, "Card", "Yes", "Yes",
      "Yes", 7),
     ("Office & rent", "Fixed monthly", "Storage unit for stock and "
-     "machines", "SpaceStore", 95.00, 0.0, "Direct debit", "Yes",
+     "machines", "SpaceStore", 75.00, 0.0, "Direct debit", "Yes",
      "Yes", "Yes", 2),
     ("Accounting & legal", "Fixed monthly", "Bookkeeping",
-     "Cedar & Co Accountants", 120.00, 0.0, "Bank transfer", "Yes",
+     "Cedar & Co Accountants", 85.00, 0.0, "Bank transfer", "Yes",
      "Yes", "Yes", 12),
-    ("Vehicle fuel", "Variable", "Van 1 fuel", "Shell", 168.00, 0.0,
+    ("Vehicle fuel", "Variable", "Van 1 fuel", "Shell", 110.00, 0.0,
      "Card", "Yes", "No", "Yes", 9),
-    ("Vehicle fuel", "Variable", "Van 2 fuel", "Shell", 142.00, 0.0,
+    ("Vehicle fuel", "Variable", "Van 2 fuel", "Shell", 95.00, 0.0,
      "Card", "Yes", "No", "Yes", 16),
     ("Cleaning supplies", "Variable", "Monthly stock order",
-     "CleanCo Supplies", 214.50, 0.0, "Card", "Yes", "No", "Yes", 4),
+     "CleanCo Supplies", 165.00, 0.0, "Card", "Yes", "No", "Yes", 4),
     ("Laundry", "Variable", "Changeover linen service",
-     "Quay Laundry", 86.00, 0.0, "Bank transfer", "Yes", "No", "Yes",
+     "Quay Laundry", 64.00, 0.0, "Bank transfer", "Yes", "No", "Yes",
      18),
     ("Subcontractors", "Job related", "Window cleaning - Chris Boyd",
-     "Clearview Windows", 320.00, 0.0, "Bank transfer", "Yes", "No",
+     "Clearview Windows", 180.00, 0.0, "Bank transfer", "Yes", "No",
      "Yes", 21),
 ]
 
@@ -3534,13 +3561,21 @@ def _build(cfg: Config) -> Sample:
             continue
         if not row["employee"]:
             continue
-        if row["date"] < monday - _dt.timedelta(days=28):
+        if row["date"] < monday - _dt.timedelta(days=56):
+            # every finished visit in the history gets its hours, so
+            # the payroll, the utilisation and the job costing all
+            # cover the same period
             continue
+        # the hours a visit is planned at - the same number the Jobs
+        # tab prices from, so the Timesheets tab cannot quietly
+        # contradict it. Real visits run a little over or under.
         prop_hours = 2.5
         if row["property"]:
             prop_hours = PROPERTIES[int(row["property"][3:]) - 1][14]
-        hours = row["hours_input"] or prop_hours
-        hours = round(hours / max(1, row["cleaners"]), 2)
+        planned = (row["hours_input"] or SERVICE_HOURS.get(row["service"])
+                   or prop_hours)
+        planned = planned * rnd.uniform(0.92, 1.14)
+        hours = round(planned / max(1, row["cleaners"]), 2)
         start = row["start"]
         begin = _dt.datetime.combine(row["date"], start)
         wobble = rnd.choice([0, 0, 0, 15, -15, 30])
@@ -3908,20 +3943,50 @@ def _build(cfg: Config) -> Sample:
             "deductible": deductible, "notes": "",
         })
     # wages, the biggest line of all
-    for back in (2, 1):
-        month_day = _dt.date(today.year, today.month, 1)
-        for _ in range(back):
-            month_day = (month_day - _dt.timedelta(days=1)).replace(day=1)
-        s.expenses.append({
-            "date": month_day.replace(day=28), "category":
-            "Wages & payroll", "type": "Fixed monthly",
-            "description": "Team wages and on-costs",
-            "supplier": "Payroll", "amount": round(
-                rnd.uniform(6200, 7400), 2), "tax": None,
-            "method": "Bank transfer", "job": "", "employee": "",
-            "receipt": "Yes", "recurring": "Yes", "deductible": "Yes",
-            "notes": "Seven cleaners plus the owner's draw.",
-        })
+    # Wages go out every Friday, and each run is sized from the hours
+    # that were really worked that week - so the books and the
+    # Timesheets tab tell the same story instead of two different
+    # ones.
+    cost_an_hour = cfg.pay_rate * (1 + cfg.employer_oncost)
+    worked: dict = {}
+    for sheet_row in s.timesheets:
+        start, finish = sheet_row["start"], sheet_row["finish"]
+        if start is None or finish is None:
+            # a row clocked by hand, with the hours typed straight in
+            typed = sheet_row.get("hours_input") or 0
+            if typed:
+                worked[sheet_row["date"]] = (
+                    worked.get(sheet_row["date"], 0.0) + float(typed))
+            continue
+        minutes = ((finish.hour * 60 + finish.minute)
+                   - (start.hour * 60 + start.minute)
+                   - (sheet_row.get("break_min") or 0))
+        if minutes > 0:
+            worked[sheet_row["date"]] = (worked.get(sheet_row["date"], 0.0)
+                                         + minutes / 60.0)
+    if worked:
+        # the Friday on or before today, then back a fortnight at a time
+        payday = today - _dt.timedelta(days=(today.weekday() - 4) % 7)
+        earliest = min(worked)
+        while payday > earliest:
+            opened = payday - _dt.timedelta(days=7)
+            hours = sum(value for day, value in worked.items()
+                        if opened <= day < payday)
+            if hours > 0:
+                s.expenses.append({
+                    "date": payday, "category": "Wages & payroll",
+                    "type": "Fixed monthly",
+                    "description": "Weekly payroll run",
+                    "supplier": "Payroll",
+                    "amount": round(hours * cost_an_hour, 2),
+                    "tax": None, "method": "Bank transfer", "job": "",
+                    "employee": "", "receipt": "Yes",
+                    "recurring": "Yes", "deductible": "Yes",
+                    "notes": f"{hours:,.1f} cleaner hours from the "
+                             f"Timesheets tab, plus employer "
+                             f"on-costs.",
+                })
+            payday = opened
 
     # ----------------------------------------------------------- mileage --
     for i, n in enumerate(usable[::4][:16]):
@@ -5039,13 +5104,13 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     r += 1
     r = s.section(r, "6. Targets the dashboard measures you against",
                   LAST_COL)
-    r = s.field(r, "Revenue target a month", cfg.monthly_revenue_target,
+    r = s.field(r, "Revenue target a month", cfg.revenue_target_month,
                 style="money0", name="MonthlyRevenueTarget",
                 validate=number_check(0, 100000000))
-    r = s.field(r, "Revenue target a year", cfg.annual_revenue_target,
+    r = s.field(r, "Revenue target a year", cfg.revenue_target_year,
                 style="money0", name="AnnualRevenueTarget",
                 validate=number_check(0, 1000000000))
-    r = s.field(r, "Expense budget a month", cfg.monthly_expense_budget,
+    r = s.field(r, "Expense budget a month", cfg.expense_budget_month,
                 style="money0", name="MonthlyExpenseBudget",
                 validate=number_check(0, 100000000))
     r = s.field(r, "Utilisation target", cfg.utilisation_target,
@@ -9506,7 +9571,7 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `cleaning_business_spreadsheet/sheets/dashboard.py`
 
-*373 lines · 1 function*
+*375 lines · 1 function*
 
 > `Dashboard` - the one page that answers 'how is the business doing?'
 >
@@ -9581,7 +9646,7 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     tiles_1 = [
         ("Revenue this month",
          '=' + _DONE.format(key="DashKey"), "money0",
-         f"target {money}{cfg.monthly_revenue_target:,.0f}"),
+         f"target {money}{cfg.revenue_target_month:,.0f}"),
         ("Invoiced this month",
          '=SUMIFS([[Invoices.total]],[[Invoices.month]],DashKey)',
          "money0", "what you have billed"),
@@ -9595,7 +9660,7 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     tiles_2 = [
         ("Costs this month",
          '=SUMIFS([[Expenses.total]],[[Expenses.month]],DashKey)',
-         "money0", f"budget {money}{cfg.monthly_expense_budget:,.0f}"),
+         "money0", f"budget {money}{cfg.expense_budget_month:,.0f}"),
         ("Profit this month",
          '=' + _DONE.format(key="DashKey") +
          '-SUMIFS([[Expenses.total]],[[Expenses.month]],DashKey)',
@@ -9604,10 +9669,12 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
          '=IFERROR((' + _DONE.format(key="DashKey") +
          '-SUMIFS([[Expenses.total]],[[Expenses.month]],DashKey))/(' +
          _DONE.format(key="DashKey") + '),"")', "percent0",
-         f"target {cfg.target_margin:.0%}"),
+         "after wages and overheads"),
         ("Average job value",
-         '=IFERROR(' + _DONE.format(key="DashKey") +
-         '/(COUNTIFS([[Jobs.month]],DashKey,[[Jobs.status]],'
+         # the sum is two SUMIFS added together, so it has to be
+         # bracketed before it is divided - a+b/c is not (a+b)/c
+         '=IFERROR((' + _DONE.format(key="DashKey") +
+         ')/(COUNTIFS([[Jobs.month]],DashKey,[[Jobs.status]],'
          '"Completed")+COUNTIFS([[Jobs.month]],DashKey,'
          '[[Jobs.status]],"Invoiced")),"")', "money",
          "completed work this month"),
@@ -11518,7 +11585,7 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
 
 ### `cleaning_business_spreadsheet/sheets/financial.py`
 
-*331 lines · 1 function*
+*341 lines · 1 function*
 
 > `Financial Plan` - targets, break-even and what if you grew.
 >
@@ -11556,6 +11623,10 @@ _REV = ('SUMIFS([[Jobs.price]],[[Jobs.month]],{key},[[Jobs.status]],'
         '"Completed")+SUMIFS([[Jobs.price]],[[Jobs.month]],{key},'
         '[[Jobs.status]],"Invoiced")')
 
+#: the same revenue, with no month filter on it
+_REV_ALL = ('SUMIFS([[Jobs.price]],[[Jobs.status]],"Completed")+'
+            'SUMIFS([[Jobs.price]],[[Jobs.status]],"Invoiced")')
+
 
 def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     s = SheetWriter(book, fmts, cfg, reg, NAME,
@@ -11590,11 +11661,12 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     r = s.field(r, "Average job value", None, style="money", mode="calc",
                 name="FpAvgJob",
                 formula=s.reg.render(
-                    '=IFERROR(AVERAGEIFS([[Jobs.price]],[[Jobs.price]],'
-                    '">0",[[Jobs.status]],"Completed"),MinimumCharge)'),
-                help_text="Taken from your completed jobs. If you have "
-                          "none yet it falls back to the minimum "
-                          "charge.")
+                    '=IFERROR((' + _REV_ALL + ')/(COUNTIF('
+                    '[[Jobs.status]],"Completed")+COUNTIF('
+                    '[[Jobs.status]],"Invoiced")),MinimumCharge)'),
+                help_text="Taken from the work you have finished or "
+                          "billed. If you have none yet it falls back "
+                          "to the minimum charge.")
     r = s.field(r, "Average hours a job", None, style="number1",
                 mode="calc", name="FpAvgHours",
                 formula=s.reg.render(
@@ -11628,9 +11700,14 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     r = s.field(r, "Jobs a month you are doing now", None, style="int",
                 mode="calc", name="FpJobsNow",
                 formula=s.reg.render(
-                    '=ROUND((COUNTIF([[Jobs.status]],"Completed")+'
-                    'COUNTIF([[Jobs.status]],"Invoiced"))/12,0)'),
-                help_text="A twelve month average of completed work.")
+                    '=ROUND((COUNTIFS([[Jobs.date]],">="&TodayDate-90,'
+                    '[[Jobs.date]],"<="&TodayDate,[[Jobs.status]],'
+                    '"Completed")+COUNTIFS([[Jobs.date]],">="&'
+                    'TodayDate-90,[[Jobs.date]],"<="&TodayDate,'
+                    '[[Jobs.status]],"Invoiced"))/3,0)'),
+                help_text="The work you actually finished or billed in "
+                          "the last three months, as a monthly "
+                          "average.")
     verdict = r
     r = s.field(r, "Where that leaves you", None, mode="calc",
                 value_end=7, name="FpBreakEvenVerdict",
@@ -12712,7 +12789,7 @@ Not needed to build the workbook - these are the checks that keep it honest. The
 
 ### `tools/validate_cleaning_workbook.py`
 
-*436 lines · 6 functions*
+*537 lines · 9 functions*
 
 > Static checks on a generated Cleaning Business workbook.
 >
@@ -12730,11 +12807,14 @@ Not needed to build the workbook - these are the checks that keep it honest. The
 | `_colnum(ref)` |  |
 | `check_raw_xml(path)` | Overlapping merges and stray hyperlinks - Excel calls these corrupt |
 | `paren_depth(formula)` | Open brackets minus closing ones, ignoring anything inside text |
+| `_top_level(text, wanted)` | Positions of `wanted` characters outside brackets and strings |
+| `_arguments(formula)` | Every comma separated argument, at every bracket depth |
+| `precedence_slip(formula)` | `SUMIFS(..)+SUMIFS(..)/COUNTIFS(..)` - the sum is not divided |
 | `_specs()` | Every register specification, keyed by sheet name |
 | `check_chain(wb, problems, notes)` | The quote-to-job-to-invoice chain only holds while these do |
 | `check(path)` |  |
 
-**Module constants:** `FUNCTION_RE` (re.compile(...)), `NAME_RE` (re.compile(...)), `BARE_COL_RE` (re.compile(...)), `KNOWN_FUNCTIONS` ({'IF', 'IFERROR', 'SUM', 'SUMIF', 'SUMIFS', 'COUNT', 'COU...), `MODERN_ONLY` ({'XLOOKUP', 'IFS', 'MAXIFS', 'MINIFS', 'TEXTJOIN', 'CONCA...), `SEEDED_INPUTS` (2 entries), `CHAIN_CHECKS` (35 items).
+**Module constants:** `FUNCTION_RE` (re.compile(...)), `NAME_RE` (re.compile(...)), `BARE_COL_RE` (re.compile(...)), `KNOWN_FUNCTIONS` ({'IF', 'IFERROR', 'SUM', 'SUMIF', 'SUMIFS', 'COUNT', 'COU...), `MODERN_ONLY` ({'XLOOKUP', 'IFS', 'MAXIFS', 'MINIFS', 'TEXTJOIN', 'CONCA...), `PRECEDENCE_OK` ({'F#+AF#/#', '(K#-J#)*#-IF(L#="",#,L#)/#', 'K#/L#+IF(P#="...), `SEEDED_INPUTS` (2 entries), `CHAIN_CHECKS` (35 items).
 
 ````python
 """Static checks on a generated Cleaning Business workbook.
@@ -12879,6 +12959,102 @@ def paren_depth(formula: str) -> int:
             depth -= 1
         i += 1
     return depth
+
+
+#: divisions that really are meant to read `a + b/c`.  Each one is the
+#: formula with its numbers blanked out, so one entry covers the whole
+#: column.
+PRECEDENCE_OK = {
+    # finish time = start + hours/24 (a whole day is 1.0 in Excel)
+    "F#+AF#/#",
+    # hours worked = (finish-start)*24 less the break in minutes
+    '(K#-J#)*#-IF(L#="",#,L#)/#',
+    # cost a year = purchase/life + repairs spread over its age
+    'K#/L#+IF(P#="",#,P#)/MAX(#,T#)',
+}
+
+
+def _top_level(text, wanted):
+    """Positions of `wanted` characters outside brackets and strings."""
+    out = []
+    depth = 0
+    in_text = False
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if in_text:
+            if char == '"':
+                if i + 1 < len(text) and text[i + 1] == '"':
+                    i += 1
+                else:
+                    in_text = False
+        elif char == '"':
+            in_text = True
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif depth == 0 and char in wanted:
+            before = text[i - 1] if i else ""
+            if char != "/" and (before == "" or before in "(,*/+-^<>=&"):
+                # a leading sign, not an operator between two values
+                i += 1
+                continue
+            out.append(i)
+        i += 1
+    return out
+
+
+def _arguments(formula):
+    """Every comma separated argument, at every bracket depth."""
+    starts = {0: 0}
+    depth = 0
+    in_text = False
+    i = 0
+    while i < len(formula):
+        char = formula[i]
+        if in_text:
+            if char == '"':
+                if i + 1 < len(formula) and formula[i + 1] == '"':
+                    i += 1
+                else:
+                    in_text = False
+        elif char == '"':
+            in_text = True
+        elif char == "(":
+            depth += 1
+            starts[depth] = i + 1
+        elif char == ")":
+            yield formula[starts.get(depth, 0):i]
+            depth -= 1
+        elif char == ",":
+            yield formula[starts.get(depth, 0):i]
+            starts[depth] = i + 1
+        i += 1
+    yield formula[starts.get(0, 0):]
+
+
+def precedence_slip(formula):
+    """`SUMIFS(..)+SUMIFS(..)/COUNTIFS(..)` - the sum is not divided.
+
+    Excel divides before it adds, so a total built by adding two
+    SUMIFS together has to be bracketed before it is divided by
+    anything.  The file still opens, every bracket balances and the
+    calculation engine returns a number - it is simply the wrong
+    number, which is the worst kind of bug to ship.
+    """
+    for argument in _arguments(formula):
+        if "/" not in argument:
+            continue
+        shape = re.sub(r"\d+", "#", argument)
+        if shape in PRECEDENCE_OK:
+            continue
+        sums = _top_level(argument, "+-")
+        if not sums:
+            continue
+        if any(divide > sums[0] for divide in _top_level(argument, "/")):
+            return argument
+    return ""
 
 
 #: input cells that ship with a formula in them as a helpful default -
@@ -13070,6 +13246,11 @@ def check(path: str) -> int:
                         problems.append(
                             f"{ws.title}!{cell.coordinate}: unbalanced "
                             f"brackets ({depth:+d}) -> {value[:80]}")
+                    slip = precedence_slip(value)
+                    if slip:
+                        problems.append(
+                            f"{ws.title}!{cell.coordinate}: a+b/c where "
+                            f"(a+b)/c was meant -> {slip[:90]}")
                     if ",)" in stripped or "(," in stripped or \
                             ",," in stripped:
                         problems.append(
@@ -16033,4 +16214,4 @@ Certificates, checks and assessments, with the expiry dates watched for you.
 
 ---
 
-*13,639 lines of Python in 53 files.*
+*13,817 lines of Python in 53 files.*

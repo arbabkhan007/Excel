@@ -142,6 +142,102 @@ def paren_depth(formula: str) -> int:
     return depth
 
 
+#: divisions that really are meant to read `a + b/c`.  Each one is the
+#: formula with its numbers blanked out, so one entry covers the whole
+#: column.
+PRECEDENCE_OK = {
+    # finish time = start + hours/24 (a whole day is 1.0 in Excel)
+    "F#+AF#/#",
+    # hours worked = (finish-start)*24 less the break in minutes
+    '(K#-J#)*#-IF(L#="",#,L#)/#',
+    # cost a year = purchase/life + repairs spread over its age
+    'K#/L#+IF(P#="",#,P#)/MAX(#,T#)',
+}
+
+
+def _top_level(text, wanted):
+    """Positions of `wanted` characters outside brackets and strings."""
+    out = []
+    depth = 0
+    in_text = False
+    i = 0
+    while i < len(text):
+        char = text[i]
+        if in_text:
+            if char == '"':
+                if i + 1 < len(text) and text[i + 1] == '"':
+                    i += 1
+                else:
+                    in_text = False
+        elif char == '"':
+            in_text = True
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif depth == 0 and char in wanted:
+            before = text[i - 1] if i else ""
+            if char != "/" and (before == "" or before in "(,*/+-^<>=&"):
+                # a leading sign, not an operator between two values
+                i += 1
+                continue
+            out.append(i)
+        i += 1
+    return out
+
+
+def _arguments(formula):
+    """Every comma separated argument, at every bracket depth."""
+    starts = {0: 0}
+    depth = 0
+    in_text = False
+    i = 0
+    while i < len(formula):
+        char = formula[i]
+        if in_text:
+            if char == '"':
+                if i + 1 < len(formula) and formula[i + 1] == '"':
+                    i += 1
+                else:
+                    in_text = False
+        elif char == '"':
+            in_text = True
+        elif char == "(":
+            depth += 1
+            starts[depth] = i + 1
+        elif char == ")":
+            yield formula[starts.get(depth, 0):i]
+            depth -= 1
+        elif char == ",":
+            yield formula[starts.get(depth, 0):i]
+            starts[depth] = i + 1
+        i += 1
+    yield formula[starts.get(0, 0):]
+
+
+def precedence_slip(formula):
+    """`SUMIFS(..)+SUMIFS(..)/COUNTIFS(..)` - the sum is not divided.
+
+    Excel divides before it adds, so a total built by adding two
+    SUMIFS together has to be bracketed before it is divided by
+    anything.  The file still opens, every bracket balances and the
+    calculation engine returns a number - it is simply the wrong
+    number, which is the worst kind of bug to ship.
+    """
+    for argument in _arguments(formula):
+        if "/" not in argument:
+            continue
+        shape = re.sub(r"\d+", "#", argument)
+        if shape in PRECEDENCE_OK:
+            continue
+        sums = _top_level(argument, "+-")
+        if not sums:
+            continue
+        if any(divide > sums[0] for divide in _top_level(argument, "/")):
+            return argument
+    return ""
+
+
 #: input cells that ship with a formula in them as a helpful default -
 #: the buyer is meant to be able to type a fixed value straight over it
 SEEDED_INPUTS = {
@@ -331,6 +427,11 @@ def check(path: str) -> int:
                         problems.append(
                             f"{ws.title}!{cell.coordinate}: unbalanced "
                             f"brackets ({depth:+d}) -> {value[:80]}")
+                    slip = precedence_slip(value)
+                    if slip:
+                        problems.append(
+                            f"{ws.title}!{cell.coordinate}: a+b/c where "
+                            f"(a+b)/c was meant -> {slip[:90]}")
                     if ",)" in stripped or "(," in stripped or \
                             ",," in stripped:
                         problems.append(

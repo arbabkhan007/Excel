@@ -234,13 +234,13 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     r += 1
     r = s.section(r, "6. Targets the dashboard measures you against",
                   LAST_COL)
-    r = s.field(r, "Revenue target a month", cfg.monthly_revenue_target,
+    r = s.field(r, "Revenue target a month", cfg.revenue_target_month,
                 style="money0", name="MonthlyRevenueTarget",
                 validate=number_check(0, 100000000))
-    r = s.field(r, "Revenue target a year", cfg.annual_revenue_target,
+    r = s.field(r, "Revenue target a year", cfg.revenue_target_year,
                 style="money0", name="AnnualRevenueTarget",
                 validate=number_check(0, 1000000000))
-    r = s.field(r, "Expense budget a month", cfg.monthly_expense_budget,
+    r = s.field(r, "Expense budget a month", cfg.expense_budget_month,
                 style="money0", name="MonthlyExpenseBudget",
                 validate=number_check(0, 100000000))
     r = s.field(r, "Utilisation target", cfg.utilisation_target,

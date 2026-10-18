@@ -127,7 +127,7 @@ from GitHub — right click, *Save link as*.
 |------|-----:|------|
 | **The finished workbook, with the example company filled in** | 1,742 KB | [cleaning-business-crm.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/cleaning-business-crm.xlsx) |
 | **The finished workbook, empty and ready to sell** | 1,685 KB | [cleaning-business-crm-blank.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/cleaning-business-crm-blank.xlsx) |
-| **The generator source, zipped** | 370 KB | [cleaning-business-crm-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/cleaning-business-crm-source.zip) |
+| **The generator source, zipped** | 374 KB | [cleaning-business-crm-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/cleaning-business-crm-source.zip) |
 
 The two `.xlsx` files are the product itself: 37 tabs, every formula
 cell locked, every sheet protected with `premium`, author Novality
@@ -136,7 +136,7 @@ their **Properties**, and work down the **Start Here** tab.
 
 The sample file is a small cleaning company with a full quarter behind
 it — 15 clients, 16 properties, 21 services, 8 cleaners, 127 jobs, 25
-invoices, 78 timesheets and the supplies, mileage, complaints and
+invoices, 95 timesheets and the supplies, mileage, complaints and
 compliance records that go with them — so every tile on the dashboard
 has a real number in it.
 
@@ -314,8 +314,8 @@ python build_cleaning_workbook.py -o output/test.xlsx
 python tools/validate_cleaning_workbook.py output/test.xlsx  # needs openpyxl
 python tools/check_cleaning_sample.py      output/test.xlsx
 
-python build_cleaning_workbook.py --rows 36 -o /tmp/small.xlsx
-python tools/recalc_check.py /tmp/small.xlsx                 # needs formulas
+python build_cleaning_workbook.py --rows 130 -o /tmp/small.xlsx
+python tools/recalc_check.py /tmp/small.xlsx --force          # needs formulas
 ```
 
 `validate_cleaning_workbook.py` reports: tab order, document author,
@@ -326,7 +326,10 @@ inside a string is not the end of the string), odd quote counts, empty
 arguments, unknown or too-modern functions, formulas pointing at a
 missing sheet, defined names and drop down sources that do not exist,
 column letters left without a row number, formula cells that are not
-locked, and the thirty-five links of the automation chain.
+locked, **`a+b/c` where `(a+b)/c` was meant** (Excel divides before it
+adds, so a total built from two `SUMIFS` has to be bracketed before it
+is divided - the file opens, the brackets balance, the answer is just
+wrong), and the thirty-five links of the automation chain.
 
 The bracket check earns its place: a deeply nested `IF()` built by
 string concatenation can lose a closing bracket, and both Excel and
@@ -339,22 +342,25 @@ at a real invoice and a real job, every payment at a real invoice,
 every timesheet, mileage trip and complaint at a real employee, every
 supply usage at a real item — and that there is enough of it (15
 clients, 16 properties, 127 jobs over nine weeks, 25 invoices, 73
-invoice lines, 78 timesheets, 68 checklist tasks) for the dashboard to
+invoice lines, 95 timesheets, 68 checklist tasks) for the dashboard to
 show something.
 
 `recalc_check.py` goes further and actually *runs* the workbook: it
 loads it into the `formulas` calculation engine, evaluates the whole
 dependency graph, then reads the answer out of every formula cell — so
 a formula that parses perfectly but subtracts a blank on an empty row
-is still caught. Check a `--rows 36` build rather than a full-size one:
-the formulas are identical, there are just fewer rows of them, and
-110,000 of them need far more memory than a laptop will give you (the
-tool says so and stops unless you pass `--force`). Add
-`--show "Dashboard!D7,Jobs!AJ5"` to print particular cells.
+is still caught. Check a `--rows 130` build rather than a full-size
+one: it still holds the whole example company, the formulas are
+identical, there are just fewer spare rows of them, and 110,000 of them
+need far more memory than a laptop will give you (the tool says so and
+stops unless you pass `--force`). Add
+`--show "Dashboard!A8,Dashboard!J12"` to print particular cells - which
+is how the average-job-value tile above was caught reading `a+b/c`.
 
-Current status: all three clean and `pyflakes` clean. 8,711 formulas in
-the `--rows 36` build were calculated and every one lands on a real
-answer.
+Current status: all three clean and `pyflakes` clean. All 25,652
+formulas of the `--rows 130` build were calculated and every one lands
+on a real answer - and the answers were read back and sanity checked
+against the example company, not just scanned for errors.
 
 ---
 

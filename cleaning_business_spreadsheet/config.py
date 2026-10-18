@@ -222,6 +222,13 @@ class Config:
     monthly_revenue_target: float = 26000.0
     annual_revenue_target: float = 312000.0
     monthly_expense_budget: float = 15000.0
+    # the example company is a smaller operation than the defaults
+    # assume, so the demo file carries targets it can be measured
+    # against - a dashboard showing 16% of target teaches nobody
+    # anything
+    sample_monthly_revenue_target: float = 6000.0
+    sample_annual_revenue_target: float = 72000.0
+    sample_monthly_expense_budget: float = 4000.0
     utilisation_target: float = 0.75     # share of paid hours that are billed
     retention_target: float = 0.85
     satisfaction_target: float = 4.5     # out of 5
@@ -249,6 +256,22 @@ class Config:
     @property
     def year(self) -> int:
         return self.plan_year or self.today.year
+
+    @property
+    def revenue_target_month(self) -> float:
+        """Monthly revenue target, scaled to whoever is reading it."""
+        return (self.sample_monthly_revenue_target
+                if self.include_sample_data else self.monthly_revenue_target)
+
+    @property
+    def revenue_target_year(self) -> float:
+        return (self.sample_annual_revenue_target
+                if self.include_sample_data else self.annual_revenue_target)
+
+    @property
+    def expense_budget_month(self) -> float:
+        return (self.sample_monthly_expense_budget
+                if self.include_sample_data else self.monthly_expense_budget)
 
     @property
     def imperial(self) -> bool:

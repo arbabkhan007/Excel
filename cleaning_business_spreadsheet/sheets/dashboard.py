@@ -57,7 +57,7 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     tiles_1 = [
         ("Revenue this month",
          '=' + _DONE.format(key="DashKey"), "money0",
-         f"target {money}{cfg.monthly_revenue_target:,.0f}"),
+         f"target {money}{cfg.revenue_target_month:,.0f}"),
         ("Invoiced this month",
          '=SUMIFS([[Invoices.total]],[[Invoices.month]],DashKey)',
          "money0", "what you have billed"),
@@ -71,7 +71,7 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     tiles_2 = [
         ("Costs this month",
          '=SUMIFS([[Expenses.total]],[[Expenses.month]],DashKey)',
-         "money0", f"budget {money}{cfg.monthly_expense_budget:,.0f}"),
+         "money0", f"budget {money}{cfg.expense_budget_month:,.0f}"),
         ("Profit this month",
          '=' + _DONE.format(key="DashKey") +
          '-SUMIFS([[Expenses.total]],[[Expenses.month]],DashKey)',
@@ -80,10 +80,12 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
          '=IFERROR((' + _DONE.format(key="DashKey") +
          '-SUMIFS([[Expenses.total]],[[Expenses.month]],DashKey))/(' +
          _DONE.format(key="DashKey") + '),"")', "percent0",
-         f"target {cfg.target_margin:.0%}"),
+         "after wages and overheads"),
         ("Average job value",
-         '=IFERROR(' + _DONE.format(key="DashKey") +
-         '/(COUNTIFS([[Jobs.month]],DashKey,[[Jobs.status]],'
+         # the sum is two SUMIFS added together, so it has to be
+         # bracketed before it is divided - a+b/c is not (a+b)/c
+         '=IFERROR((' + _DONE.format(key="DashKey") +
+         ')/(COUNTIFS([[Jobs.month]],DashKey,[[Jobs.status]],'
          '"Completed")+COUNTIFS([[Jobs.month]],DashKey,'
          '[[Jobs.status]],"Invoiced")),"")', "money",
          "completed work this month"),

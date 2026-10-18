@@ -1004,12 +1004,16 @@ ONE_OFFS = [
 # ---------------------------------------------------------------------------
 # category, type, description, supplier, amount, tax, method, receipt,
 # recurring, deductible, day of month, months back
+#: service name -> the hours one cleaner is expected to take, so the
+#: demo timesheets can be built from the same figure the price uses
+SERVICE_HOURS = {row[0]: row[3] for row in SERVICES}
+
 MONTHLY_COSTS = [
     ("Business insurance", "Fixed monthly", "Public and employer "
      "liability", "Hiscox", 66.00, 0.0, "Direct debit", "Yes", "Yes",
      "Yes", 1),
     ("Vehicle insurance", "Fixed monthly", "Van 1 and van 2 fleet "
-     "policy", "Admiral Business", 189.00, 0.0, "Direct debit", "Yes",
+     "policy", "Admiral Business", 150.00, 0.0, "Direct debit", "Yes",
      "Yes", "Yes", 1),
     ("Software & apps", "Fixed monthly", "Accounting software and "
      "cloud storage", "Ledgerly", 32.00, 0.0, "Card", "Yes", "Yes",
@@ -1017,25 +1021,25 @@ MONTHLY_COSTS = [
     ("Phone & internet", "Fixed monthly", "Two business mobiles",
      "Telecom NW", 58.00, 0.0, "Direct debit", "Yes", "Yes", "Yes", 5),
     ("Marketing & advertising", "Fixed monthly", "Google Ads - local "
-     "cleaning searches", "Google", 240.00, 0.0, "Card", "Yes", "Yes",
+     "cleaning searches", "Google", 120.00, 0.0, "Card", "Yes", "Yes",
      "Yes", 7),
     ("Office & rent", "Fixed monthly", "Storage unit for stock and "
-     "machines", "SpaceStore", 95.00, 0.0, "Direct debit", "Yes",
+     "machines", "SpaceStore", 75.00, 0.0, "Direct debit", "Yes",
      "Yes", "Yes", 2),
     ("Accounting & legal", "Fixed monthly", "Bookkeeping",
-     "Cedar & Co Accountants", 120.00, 0.0, "Bank transfer", "Yes",
+     "Cedar & Co Accountants", 85.00, 0.0, "Bank transfer", "Yes",
      "Yes", "Yes", 12),
-    ("Vehicle fuel", "Variable", "Van 1 fuel", "Shell", 168.00, 0.0,
+    ("Vehicle fuel", "Variable", "Van 1 fuel", "Shell", 110.00, 0.0,
      "Card", "Yes", "No", "Yes", 9),
-    ("Vehicle fuel", "Variable", "Van 2 fuel", "Shell", 142.00, 0.0,
+    ("Vehicle fuel", "Variable", "Van 2 fuel", "Shell", 95.00, 0.0,
      "Card", "Yes", "No", "Yes", 16),
     ("Cleaning supplies", "Variable", "Monthly stock order",
-     "CleanCo Supplies", 214.50, 0.0, "Card", "Yes", "No", "Yes", 4),
+     "CleanCo Supplies", 165.00, 0.0, "Card", "Yes", "No", "Yes", 4),
     ("Laundry", "Variable", "Changeover linen service",
-     "Quay Laundry", 86.00, 0.0, "Bank transfer", "Yes", "No", "Yes",
+     "Quay Laundry", 64.00, 0.0, "Bank transfer", "Yes", "No", "Yes",
      18),
     ("Subcontractors", "Job related", "Window cleaning - Chris Boyd",
-     "Clearview Windows", 320.00, 0.0, "Bank transfer", "Yes", "No",
+     "Clearview Windows", 180.00, 0.0, "Bank transfer", "Yes", "No",
      "Yes", 21),
 ]
 
@@ -1303,13 +1307,21 @@ def _build(cfg: Config) -> Sample:
             continue
         if not row["employee"]:
             continue
-        if row["date"] < monday - _dt.timedelta(days=28):
+        if row["date"] < monday - _dt.timedelta(days=56):
+            # every finished visit in the history gets its hours, so
+            # the payroll, the utilisation and the job costing all
+            # cover the same period
             continue
+        # the hours a visit is planned at - the same number the Jobs
+        # tab prices from, so the Timesheets tab cannot quietly
+        # contradict it. Real visits run a little over or under.
         prop_hours = 2.5
         if row["property"]:
             prop_hours = PROPERTIES[int(row["property"][3:]) - 1][14]
-        hours = row["hours_input"] or prop_hours
-        hours = round(hours / max(1, row["cleaners"]), 2)
+        planned = (row["hours_input"] or SERVICE_HOURS.get(row["service"])
+                   or prop_hours)
+        planned = planned * rnd.uniform(0.92, 1.14)
+        hours = round(planned / max(1, row["cleaners"]), 2)
         start = row["start"]
         begin = _dt.datetime.combine(row["date"], start)
         wobble = rnd.choice([0, 0, 0, 15, -15, 30])
@@ -1677,20 +1689,50 @@ def _build(cfg: Config) -> Sample:
             "deductible": deductible, "notes": "",
         })
     # wages, the biggest line of all
-    for back in (2, 1):
-        month_day = _dt.date(today.year, today.month, 1)
-        for _ in range(back):
-            month_day = (month_day - _dt.timedelta(days=1)).replace(day=1)
-        s.expenses.append({
-            "date": month_day.replace(day=28), "category":
-            "Wages & payroll", "type": "Fixed monthly",
-            "description": "Team wages and on-costs",
-            "supplier": "Payroll", "amount": round(
-                rnd.uniform(6200, 7400), 2), "tax": None,
-            "method": "Bank transfer", "job": "", "employee": "",
-            "receipt": "Yes", "recurring": "Yes", "deductible": "Yes",
-            "notes": "Seven cleaners plus the owner's draw.",
-        })
+    # Wages go out every Friday, and each run is sized from the hours
+    # that were really worked that week - so the books and the
+    # Timesheets tab tell the same story instead of two different
+    # ones.
+    cost_an_hour = cfg.pay_rate * (1 + cfg.employer_oncost)
+    worked: dict = {}
+    for sheet_row in s.timesheets:
+        start, finish = sheet_row["start"], sheet_row["finish"]
+        if start is None or finish is None:
+            # a row clocked by hand, with the hours typed straight in
+            typed = sheet_row.get("hours_input") or 0
+            if typed:
+                worked[sheet_row["date"]] = (
+                    worked.get(sheet_row["date"], 0.0) + float(typed))
+            continue
+        minutes = ((finish.hour * 60 + finish.minute)
+                   - (start.hour * 60 + start.minute)
+                   - (sheet_row.get("break_min") or 0))
+        if minutes > 0:
+            worked[sheet_row["date"]] = (worked.get(sheet_row["date"], 0.0)
+                                         + minutes / 60.0)
+    if worked:
+        # the Friday on or before today, then back a fortnight at a time
+        payday = today - _dt.timedelta(days=(today.weekday() - 4) % 7)
+        earliest = min(worked)
+        while payday > earliest:
+            opened = payday - _dt.timedelta(days=7)
+            hours = sum(value for day, value in worked.items()
+                        if opened <= day < payday)
+            if hours > 0:
+                s.expenses.append({
+                    "date": payday, "category": "Wages & payroll",
+                    "type": "Fixed monthly",
+                    "description": "Weekly payroll run",
+                    "supplier": "Payroll",
+                    "amount": round(hours * cost_an_hour, 2),
+                    "tax": None, "method": "Bank transfer", "job": "",
+                    "employee": "", "receipt": "Yes",
+                    "recurring": "Yes", "deductible": "Yes",
+                    "notes": f"{hours:,.1f} cleaner hours from the "
+                             f"Timesheets tab, plus employer "
+                             f"on-costs.",
+                })
+            payday = opened
 
     # ----------------------------------------------------------- mileage --
     for i, n in enumerate(usable[::4][:16]):

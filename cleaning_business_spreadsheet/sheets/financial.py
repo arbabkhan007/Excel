@@ -20,6 +20,10 @@ _REV = ('SUMIFS([[Jobs.price]],[[Jobs.month]],{key},[[Jobs.status]],'
         '"Completed")+SUMIFS([[Jobs.price]],[[Jobs.month]],{key},'
         '[[Jobs.status]],"Invoiced")')
 
+#: the same revenue, with no month filter on it
+_REV_ALL = ('SUMIFS([[Jobs.price]],[[Jobs.status]],"Completed")+'
+            'SUMIFS([[Jobs.price]],[[Jobs.status]],"Invoiced")')
+
 
 def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     s = SheetWriter(book, fmts, cfg, reg, NAME,
@@ -54,11 +58,12 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     r = s.field(r, "Average job value", None, style="money", mode="calc",
                 name="FpAvgJob",
                 formula=s.reg.render(
-                    '=IFERROR(AVERAGEIFS([[Jobs.price]],[[Jobs.price]],'
-                    '">0",[[Jobs.status]],"Completed"),MinimumCharge)'),
-                help_text="Taken from your completed jobs. If you have "
-                          "none yet it falls back to the minimum "
-                          "charge.")
+                    '=IFERROR((' + _REV_ALL + ')/(COUNTIF('
+                    '[[Jobs.status]],"Completed")+COUNTIF('
+                    '[[Jobs.status]],"Invoiced")),MinimumCharge)'),
+                help_text="Taken from the work you have finished or "
+                          "billed. If you have none yet it falls back "
+                          "to the minimum charge.")
     r = s.field(r, "Average hours a job", None, style="number1",
                 mode="calc", name="FpAvgHours",
                 formula=s.reg.render(
@@ -92,9 +97,14 @@ def build(book, fmts, cfg: Config, reg: Registry) -> SheetWriter:
     r = s.field(r, "Jobs a month you are doing now", None, style="int",
                 mode="calc", name="FpJobsNow",
                 formula=s.reg.render(
-                    '=ROUND((COUNTIF([[Jobs.status]],"Completed")+'
-                    'COUNTIF([[Jobs.status]],"Invoiced"))/12,0)'),
-                help_text="A twelve month average of completed work.")
+                    '=ROUND((COUNTIFS([[Jobs.date]],">="&TodayDate-90,'
+                    '[[Jobs.date]],"<="&TodayDate,[[Jobs.status]],'
+                    '"Completed")+COUNTIFS([[Jobs.date]],">="&'
+                    'TodayDate-90,[[Jobs.date]],"<="&TodayDate,'
+                    '[[Jobs.status]],"Invoiced"))/3,0)'),
+                help_text="The work you actually finished or billed in "
+                          "the last three months, as a monthly "
+                          "average.")
     verdict = r
     r = s.field(r, "Where that leaves you", None, mode="calc",
                 value_end=7, name="FpBreakEvenVerdict",
