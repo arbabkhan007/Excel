@@ -1,6 +1,6 @@
 # Social Media Content Calendar & Analytics Planner — generator
 
-> **This repository holds three spreadsheet products** built on the same
+> **This repository holds four spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -11,6 +11,9 @@
 > * **Automated Meal Planner & Grocery List Spreadsheet** —
 >   [README_MEAL.md](README_MEAL.md),
 >   `build_meal_planner_workbook.py`, 36 tabs.
+> * **Cleaning Business CRM & Pricing Calculator** —
+>   [README_CLEANING.md](README_CLEANING.md),
+>   `build_cleaning_workbook.py`, 37 tabs.
 
 Python code that builds a finished, ready-to-sell Excel workbook for
 anyone who plans social media content: a 12-month calendar, the banks and
@@ -33,9 +36,11 @@ the repository root. Outside this repo, `pip install xlsxwriter` first — the
 generator is tested against the bundled 0.3.0 and against XlsxWriter 3.2.
 
 The companion products in this repository are the
-[Pet Sitting & Dog Walking Business Spreadsheet](README.md) and the
-[Automated Meal Planner & Grocery List Spreadsheet](README_MEAL.md);
-all three share the same engine, the same conventions and the same
+[Pet Sitting & Dog Walking Business Spreadsheet](README.md), the
+[Automated Meal Planner & Grocery List Spreadsheet](README_MEAL.md)
+and the
+[Cleaning Business CRM & Pricing Calculator](README_CLEANING.md);
+all four share the same engine, the same conventions and the same
 quality tools.
 
 ---

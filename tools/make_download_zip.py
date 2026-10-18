@@ -136,6 +136,49 @@ is the whole program in one readable document.
 """
 
 
+CLEANING_HOW_TO_RUN = """\
+Cleaning Business CRM & Pricing Calculator
+============================================
+
+    pip install XlsxWriter
+    python build_cleaning_workbook.py
+
+The workbook appears in:
+
+    output/Cleaning Business CRM & Pricing Calculator.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example data
+    --business "Name Ltd"   your business name on the cover and prints
+    --owner "Your Name"     the owner / manager
+    --rate 45               hourly rate charged to the client
+    --pay 18                hourly pay rate of a cleaner
+    --minimum 90            minimum charge for any job
+    --tax 20                sales tax / VAT rate, 0 if you are not registered
+    --terms 14              payment terms in days
+    --units "sq m"          price area work in square metres
+    --distance km           log mileage in kilometres
+    --year 2027             the year the planner and reports open on
+    --week-start Sunday     weeks run Sunday to Saturday
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 1200             more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium` so the maths cannot be typed over by accident; the
+cream coloured cells are the ones meant for typing in.
+
+Fill in Settings, then Clients and their Properties, then the Service
+Catalog - after that the Pricing & Quote Calculator will price a job
+from the property, the Job Scheduler will cost it and the Invoices tab
+will bill it.  README_CLEANING.md explains how it is built and what is
+on each of the 37 tabs; SOURCE_CODE_CLEANING.md is the whole program in
+one readable document.
+"""
+
+
 PRODUCTS = {
     "pet": {
         "folder": "pet-sitting-spreadsheet",
@@ -169,6 +212,17 @@ PRODUCTS = {
         "tools": ["tools/validate_meal_workbook.py",
                   "tools/check_meal_sample.py"] + SHARED_TOOLS,
         "how_to_run": MEAL_HOW_TO_RUN,
+    },
+    "cleaning": {
+        "folder": "cleaning-business-crm",
+        "output": os.path.join(
+            "download", "cleaning-business-crm-source.zip"),
+        "files": ["build_cleaning_workbook.py", "README_CLEANING.md",
+                  "SOURCE_CODE_CLEANING.md"],
+        "trees": ["cleaning_business_spreadsheet"],
+        "tools": ["tools/validate_cleaning_workbook.py",
+                  "tools/check_cleaning_sample.py"] + SHARED_TOOLS,
+        "how_to_run": CLEANING_HOW_TO_RUN,
     },
 }
 

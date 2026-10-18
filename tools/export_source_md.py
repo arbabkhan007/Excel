@@ -420,7 +420,161 @@ MEAL = {
     "sections": MEAL_SECTIONS,
 }
 
-PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL}
+# ---------------------------------------------------------------------------
+# Product D - cleaning business CRM
+# ---------------------------------------------------------------------------
+
+_CLEAN = "cleaning_business_spreadsheet"
+
+CLEANING_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_cleaning_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Cleaning Business CRM & Pricing Calculator.xlsx`.",
+     ["build_cleaning_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the sheet "
+     "writer, the cross sheet names and the demo cleaning company. These "
+     "are the parts every tab leans on.",
+     [f"{_CLEAN}/__init__.py",
+      f"{_CLEAN}/__main__.py",
+      f"{_CLEAN}/cli.py",
+      f"{_CLEAN}/config.py",
+      f"{_CLEAN}/layout.py",
+      f"{_CLEAN}/formats.py",
+      f"{_CLEAN}/writer.py",
+      f"{_CLEAN}/names.py",
+      f"{_CLEAN}/build.py",
+      f"{_CLEAN}/sample_data.py"]),
+    ("3. The work registers",
+     "One module per data tab. Each returns a `SheetSpec` - a list of "
+     "columns with their formulas - and the writer turns that into a "
+     "formatted, validated, protected sheet. These are the chain that "
+     "turns an enquiry into a priced job and a paid invoice.",
+     [f"{_CLEAN}/sheets/__init__.py",
+      f"{_CLEAN}/sheets/common.py",
+      f"{_CLEAN}/sheets/lists.py",
+      f"{_CLEAN}/sheets/settings.py",
+      f"{_CLEAN}/sheets/clients.py",
+      f"{_CLEAN}/sheets/properties.py",
+      f"{_CLEAN}/sheets/leads.py",
+      f"{_CLEAN}/sheets/services.py",
+      f"{_CLEAN}/sheets/quotes.py",
+      f"{_CLEAN}/sheets/quote_lines.py",
+      f"{_CLEAN}/sheets/jobs.py",
+      f"{_CLEAN}/sheets/job_tasks.py",
+      f"{_CLEAN}/sheets/checklists.py"]),
+    ("4. The people and money registers",
+     "Who did the work, what it cost and what came back in: staff, "
+     "timesheets, job costing, invoices and their lines, payments, "
+     "supplies, equipment, expenses, mileage, complaints, incidents and "
+     "compliance documents.",
+     [f"{_CLEAN}/sheets/employees.py",
+      f"{_CLEAN}/sheets/timesheets.py",
+      f"{_CLEAN}/sheets/job_costing.py",
+      f"{_CLEAN}/sheets/invoices.py",
+      f"{_CLEAN}/sheets/invoice_lines.py",
+      f"{_CLEAN}/sheets/payments.py",
+      f"{_CLEAN}/sheets/supplies.py",
+      f"{_CLEAN}/sheets/supply_usage.py",
+      f"{_CLEAN}/sheets/equipment.py",
+      f"{_CLEAN}/sheets/expenses.py",
+      f"{_CLEAN}/sheets/mileage.py",
+      f"{_CLEAN}/sheets/complaints.py",
+      f"{_CLEAN}/sheets/incidents.py",
+      f"{_CLEAN}/sheets/safety.py"]),
+    ("5. The pages",
+     "The tabs that read the registers: the welcome page, the dashboard, "
+     "the quote calculator, the month calendar, the staff rota, "
+     "retention, the reports, the financial plan, the three printables "
+     "and the help tab.",
+     [f"{_CLEAN}/sheets/start_here.py",
+      f"{_CLEAN}/sheets/dashboard.py",
+      f"{_CLEAN}/sheets/quote_calc.py",
+      f"{_CLEAN}/sheets/calendar_page.py",
+      f"{_CLEAN}/sheets/staff_schedule.py",
+      f"{_CLEAN}/sheets/retention.py",
+      f"{_CLEAN}/sheets/reports.py",
+      f"{_CLEAN}/sheets/financial.py",
+      f"{_CLEAN}/sheets/printables.py",
+      f"{_CLEAN}/sheets/help_tab.py"]),
+    ("6. Quality checks (optional)",
+     "Not needed to build the workbook - these are the checks that keep "
+     "it honest. The first two need `openpyxl`, the third needs "
+     "`formulas`.",
+     ["tools/validate_cleaning_workbook.py",
+      "tools/check_cleaning_sample.py",
+      "tools/recalc_check.py"] + SHARED_TOOLS),
+]
+
+CLEANING = {
+    "package": "cleaning_business_spreadsheet",
+    "builder": "build_cleaning_workbook.py",
+    "doc": "README_CLEANING.md",
+    "tabs": 37,
+    "title": "Cleaning Business CRM & Pricing Calculator",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_CLEANING.md",
+    "closing": ("**Activate the first tab** and close the file - there "
+                "is no hidden sheet to hide in this one."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 37 tab `.xlsx` workbook with over 110,000 formulas: a "
+        "client CRM and property database, a lead pipeline, a priced "
+        "service catalogue, a quote calculator that sizes a job from the "
+        "property and prices it, quotes and estimates, a job scheduler "
+        "with recurring visits, a month calendar, property specific "
+        "cleaning checklists, staff records, a rota with attendance and "
+        "timesheets, job costing and profit per job, invoices, payments, "
+        "supplies, equipment, expenses, mileage, retention, complaints, "
+        "safety documents, a dashboard, reports, a financial plan and "
+        "three printable forms. Document author is **Novality Store**; "
+        "every formula cell is locked and every sheet protected with the "
+        "password **`premium`**, while the cells you are meant to type "
+        "in stay open.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and on "
+        "the much older 0.3.0, so it does not rely on anything recent. "
+        "The workbook itself is Excel 2010 safe \u2014 no dynamic arrays, "
+        "no `XLOOKUP`, no `IFS`, nothing that needs array entry \u2014 and "
+        "it opens in Google Sheets, LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_cleaning_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --business TEXT       business name on the cover and printables",
+        "  --owner TEXT          owner / manager name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --year YYYY           the year the planner and reports open on",
+        "  --week-start DAY      Monday or Sunday",
+        "  --rate AMOUNT         hourly rate charged to the client",
+        "  --pay AMOUNT          hourly pay rate of a cleaner",
+        "  --minimum AMOUNT      minimum charge for any job",
+        "  --tax PERCENT         sales tax / VAT rate, e.g. 20 for 20%",
+        "  --terms DAYS          payment terms in days",
+        "  --units {sq ft,sq m}  the area unit used for pricing",
+        "  --distance {miles,km} the distance unit used for mileage",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the demo data)",
+        "```",
+    ],
+    "sections": CLEANING_SECTIONS,
+}
+
+PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
+            "cleaning": CLEANING}
 
 
 # ---------------------------------------------------------------------------

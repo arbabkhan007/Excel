@@ -1,6 +1,6 @@
 # Pet Sitting & Dog Walking Business Spreadsheet — generator
 
-> **This repository holds three spreadsheet products** built on the same
+> **This repository holds four spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -12,6 +12,9 @@
 > * **Automated Meal Planner & Grocery List Spreadsheet** —
 >   [README_MEAL.md](README_MEAL.md),
 >   `build_meal_planner_workbook.py`, 36 tabs.
+> * **Cleaning Business CRM & Pricing Calculator** —
+>   [README_CLEANING.md](README_CLEANING.md),
+>   `build_cleaning_workbook.py`, 37 tabs.
 
 Python code that builds a finished, ready-to-sell Excel workbook for pet
 sitters and dog walkers.
