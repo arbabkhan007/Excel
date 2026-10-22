@@ -1,6 +1,6 @@
 # Handmade Product Pricing & Profit Calculator — generator
 
-> **This repository holds five spreadsheet products** built on the same
+> **This repository holds six spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -17,6 +17,9 @@
 >   `build_cleaning_workbook.py`, 37 tabs.
 > * **Handmade Product Pricing & Profit Calculator** — this README,
 >   `build_handmade_workbook.py`, 40 tabs.
+> * **Salon Business Management Spreadsheet** —
+>   [README_SALON.md](README_SALON.md),
+>   `build_salon_workbook.py`, 20 tabs.
 
 Python code that builds a finished, ready-to-sell Excel workbook for a
 maker: what the materials really cost, what the hours are really worth,

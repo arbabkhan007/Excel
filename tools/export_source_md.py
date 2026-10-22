@@ -747,8 +747,172 @@ HANDMADE = {
     "sections": HANDMADE_SECTIONS,
 }
 
+
+# ---------------------------------------------------------------------------
+# Product G - salon business management spreadsheet
+# ---------------------------------------------------------------------------
+
+_SALON = "salon_business_spreadsheet"
+
+SALON_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_salon_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Salon Business Management Spreadsheet.xlsx`.",
+     ["build_salon_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the "
+     "sheet writer, the cross sheet names and the demo salon. These are "
+     "the parts every tab leans on.",
+     [f"{_SALON}/__init__.py",
+      f"{_SALON}/__main__.py",
+      f"{_SALON}/cli.py",
+      f"{_SALON}/config.py",
+      f"{_SALON}/layout.py",
+      f"{_SALON}/formats.py",
+      f"{_SALON}/writer.py",
+      f"{_SALON}/names.py",
+      f"{_SALON}/build.py",
+      f"{_SALON}/sample_data.py"]),
+    ("3. The diary and the client book",
+     "The menu with its minutes and its product cost, the client "
+     "record that remembers the formula and the patch test, and the "
+     "appointment planner with the double-booking alarm. The shared "
+     "helpers in `common.py` are where the alert colours, the lookups "
+     "and the rounding rules live.",
+     [f"{_SALON}/sheets/__init__.py",
+      f"{_SALON}/sheets/common.py",
+      f"{_SALON}/sheets/services.py",
+      f"{_SALON}/sheets/clients.py",
+      f"{_SALON}/sheets/appointments.py"]),
+    ("4. The money",
+     "The till and the payments against it. Net sale is gross less "
+     "discounts less refunds; a deposit is held against the booking and "
+     "applied to the first line of that visit, so it can never be "
+     "counted as revenue twice.",
+     [f"{_SALON}/sheets/sales.py",
+      f"{_SALON}/sheets/payments.py"]),
+    ("5. The team and what they are paid",
+     "Eight commission methods, chosen per person, and a payroll tab "
+     "that knows the difference between what somebody is paid and what "
+     "they cost.",
+     [f"{_SALON}/sheets/staff.py",
+      f"{_SALON}/sheets/commissions.py",
+      f"{_SALON}/sheets/payroll.py"]),
+    ("6. Costs, stock and suppliers",
+     "Every bill with its recurring frequency spread into a monthly "
+     "overhead, the stock room counted the honest way, and the orders "
+     "that fill it - including the column that catches a wholesaler's "
+     "quiet price rise.",
+     [f"{_SALON}/sheets/expenses.py",
+      f"{_SALON}/sheets/inventory.py",
+      f"{_SALON}/sheets/purchases.py"]),
+    ("7. Growth",
+     "Campaigns measured against what they really cost - the money out "
+     "and the discount given away - and a loyalty scheme whose points "
+     "come from spend already logged.",
+     [f"{_SALON}/sheets/marketing.py",
+      f"{_SALON}/sheets/loyalty.py"]),
+    ("8. The pages",
+     "The hand-built tabs: the welcome, the dashboard, the profit and "
+     "loss, the goals and budget, the analytics, the weekly and monthly "
+     "reports, and the settings tab that every formula reads.",
+     [f"{_SALON}/sheets/start_here.py",
+      f"{_SALON}/sheets/dashboard.py",
+      f"{_SALON}/sheets/profit_loss.py",
+      f"{_SALON}/sheets/goals.py",
+      f"{_SALON}/sheets/analytics.py",
+      f"{_SALON}/sheets/reports.py",
+      f"{_SALON}/sheets/settings.py"]),
+    ("9. The quality tools",
+     "Not shipped with the workbook, but the reason it can be trusted: "
+     "a static validator, a bracket and placeholder checker, a demo "
+     "data checker that rebuilds the arithmetic in Python, and a "
+     "recalculation harness that really evaluates every formula.",
+     ["tools/validate_salon_workbook.py",
+      "tools/check_parens.py",
+      "tools/check_salon_sample.py",
+      "tools/recalc_check.py"]),
+]
+
+SALON = {
+    "package": _SALON,
+    "builder": "build_salon_workbook.py",
+    "doc": "README_SALON.md",
+    "tabs": 20,
+    "title": "Salon Business Management Spreadsheet",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_SALON.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on Start Here, not on Settings."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 20 tab `.xlsx` workbook with over 122,000 formulas: an "
+        "appointment planner with a double-booking alarm, a client CRM "
+        "that knows who is drifting away, a service menu priced by the "
+        "chair hour, a till that separates service from retail, "
+        "deposits that cannot be counted twice, eight different "
+        "commission methods, payroll with employer costs, expenses with "
+        "recurring bills spread into a real monthly overhead, a twelve "
+        "month profit and loss, stock and purchasing with reorder "
+        "alerts, campaigns measured against the discount they gave "
+        "away, a loyalty scheme, goals and budgets, analytics by "
+        "category, day, hour and source, and printable weekly and "
+        "monthly reports. Document author is **Novality Store**; every "
+        "formula cell is locked and every sheet protected with the "
+        "password **`premium`**, while the cells you are meant to type "
+        "in stay open.",
+        "",
+        "Nothing is hard coded to one country or one pay model. The tax "
+        "rate and the two switches that say what it applies to, the "
+        "commission basis, the deposit rule, the rounding rule, the "
+        "loyalty scheme and every drop-down list are settings, not "
+        "assumptions.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and on "
+        "the much older 0.3.0, so it does not rely on anything recent. "
+        "The workbook itself is Excel 2010 safe \u2014 no dynamic "
+        "arrays, no `XLOOKUP`, no `IFS`, nothing that needs array entry "
+        "\u2014 and it opens in Google Sheets, LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_salon_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --salon TEXT          salon name on the cover and the reports",
+        "  --owner TEXT          the owner's name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --tax PERCENT         sales tax / VAT rate",
+        "  --tax-on WHAT         both, retail, services or neither",
+        "  --commission PERCENT  default service commission",
+        "  --commission-method   the method new stylists start on",
+        "  --hourly AMOUNT       default hourly rate",
+        "  --burden PERCENT      employer costs on top of wages",
+        "  --deposit PERCENT     deposit as a share of the price",
+        "  --chairs N            chairs or stations in the salon",
+        "  --open-days N         trading days a week",
+        "  --target AMOUNT       monthly revenue target",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the demo data)",
+        "```",
+    ],
+    "sections": SALON_SECTIONS,
+}
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
-            "cleaning": CLEANING, "handmade": HANDMADE}
+            "cleaning": CLEANING, "handmade": HANDMADE,
+            "salon": SALON}
 
 
 # ---------------------------------------------------------------------------

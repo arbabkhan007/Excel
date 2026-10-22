@@ -1,6 +1,6 @@
 # Pet Sitting & Dog Walking Business Spreadsheet — generator
 
-> **This repository holds four spreadsheet products** built on the same
+> **This repository holds six spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -15,6 +15,12 @@
 > * **Cleaning Business CRM & Pricing Calculator** —
 >   [README_CLEANING.md](README_CLEANING.md),
 >   `build_cleaning_workbook.py`, 37 tabs.
+> * **Handmade Product Pricing & Profit Calculator** —
+>   [README_HANDMADE.md](README_HANDMADE.md),
+>   `build_handmade_workbook.py`, 40 tabs.
+> * **Salon Business Management Spreadsheet** —
+>   [README_SALON.md](README_SALON.md),
+>   `build_salon_workbook.py`, 20 tabs.
 
 Python code that builds a finished, ready-to-sell Excel workbook for pet
 sitters and dog walkers.

@@ -179,6 +179,91 @@ one readable document.
 """
 
 
+HANDMADE_HOW_TO_RUN = """\
+Handmade Product Pricing & Profit Calculator
+============================================
+
+    pip install XlsxWriter
+    python build_handmade_workbook.py
+
+The workbook appears in:
+
+    output/Handmade Product Pricing & Profit Calculator.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example shop
+    --shop "My Shop"        shop name on the cover and the printables
+    --owner "Your Name"     the maker
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --rate 22               what you pay yourself an hour
+    --margin 60             target retail margin, percent
+    --wholesale-discount 50 the discount a stockist gets off retail
+    --rounding "Nearest 0.95"   how a calculated price is rounded
+    --tax 20                sales tax / VAT rate, percent
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 400              more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium`; the cream coloured cells are the ones meant for
+typing in.
+
+Fill in Settings, then Materials, then Products - after that the Retail
+Calculator prices anything in the catalog and the Dashboard tells you
+which products are quietly losing money.  README_HANDMADE.md explains
+how it is built and what is on each of the 40 tabs; SOURCE_CODE_HANDMADE.md
+is the whole program in one readable document.
+"""
+
+
+SALON_HOW_TO_RUN = """\
+Salon Business Management Spreadsheet
+=====================================
+
+    pip install XlsxWriter
+    python build_salon_workbook.py
+
+The workbook appears in:
+
+    output/Salon Business Management Spreadsheet.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example salon
+    --salon "My Salon"      your salon name on the cover and reports
+    --owner "Your Name"     the owner
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --tax 20 --tax-on both  sales tax rate, and what it applies to
+                            (both | retail | services | neither)
+    --commission 45         default service commission percentage
+    --commission-method ... the method new stylists start on
+    --hourly 15             default hourly rate
+    --burden 12             employer costs on wages, percent
+    --deposit 25            deposit as a percentage of the price
+    --chairs 6 --open-days 6   capacity, for the utilisation figures
+    --target 24000          monthly revenue target
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 2000             more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium` so the maths cannot be typed over by accident; the
+white cells are the ones meant for typing in.
+
+Fill in Settings first - tax, deposits, commission defaults, targets -
+then the Services menu, then the team on Staff.  After that the diary
+feeds the till, the till feeds the commissions, the commissions feed
+the payroll and the payroll lands in the Profit & Loss.
+README_SALON.md explains how it is built and what is on each of the 20
+tabs; SOURCE_CODE_SALON.md is the whole program in one readable
+document.
+
+It does not send confirmations, texts or emails, it does not sync with
+any booking platform, and it is not accounting, payroll or tax advice.
+"""
+
+
 PRODUCTS = {
     "pet": {
         "folder": "pet-sitting-spreadsheet",
@@ -223,6 +308,29 @@ PRODUCTS = {
         "tools": ["tools/validate_cleaning_workbook.py",
                   "tools/check_cleaning_sample.py"] + SHARED_TOOLS,
         "how_to_run": CLEANING_HOW_TO_RUN,
+    },
+    "handmade": {
+        "folder": "handmade-pricing-calculator",
+        "output": os.path.join(
+            "download", "handmade-pricing-calculator-source.zip"),
+        "files": ["build_handmade_workbook.py", "README_HANDMADE.md",
+                  "SOURCE_CODE_HANDMADE.md"],
+        "trees": ["handmade_pricing_spreadsheet"],
+        "tools": ["tools/validate_handmade_workbook.py",
+                  "tools/check_handmade_sample.py"] + SHARED_TOOLS,
+        "how_to_run": HANDMADE_HOW_TO_RUN,
+    },
+    "salon": {
+        "folder": "salon-business-spreadsheet",
+        "output": os.path.join(
+            "download", "salon-business-spreadsheet-source.zip"),
+        "files": ["build_salon_workbook.py", "README_SALON.md",
+                  "SOURCE_CODE_SALON.md"],
+        "trees": ["salon_business_spreadsheet"],
+        "tools": ["tools/validate_salon_workbook.py",
+                  "tools/check_salon_sample.py",
+                  "tools/check_parens.py"] + SHARED_TOOLS,
+        "how_to_run": SALON_HOW_TO_RUN,
     },
 }
 
