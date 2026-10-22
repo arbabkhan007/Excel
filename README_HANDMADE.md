@@ -145,7 +145,7 @@ from GitHub — right click, *Save link as*.
 |------|-----:|------|
 | **The finished workbook, with the example shop filled in** | 1,702 KB | [handmade-pricing-calculator.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/handmade-pricing-calculator.xlsx) |
 | **The finished workbook, empty and ready to sell** | 1,677 KB | [handmade-pricing-calculator-blank.xlsx](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/handmade-pricing-calculator-blank.xlsx) |
-| **The generator source, zipped** | 390 KB | [handmade-pricing-calculator-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/handmade-pricing-calculator-source.zip) |
+| **The generator source, zipped** | 408 KB | [handmade-pricing-calculator-source.zip](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/handmade-pricing-calculator-source.zip) |
 
 The example shop is **Willow & Thread Handmade** of Asheville: fourteen
 products across crochet, jewelry, candles, sewing, woodworking and
