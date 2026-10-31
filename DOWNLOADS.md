@@ -8,6 +8,33 @@ no macros · no charts · formula cells locked, input cells unlocked.
 
 ---
 
+## I. Ultimate Airbnb & Short-Term Rental Management Spreadsheet
+
+20 tabs · 138,641 formulas · 147 named ranges · 3,898 unlocked input cells.
+For Airbnb and Vrbo hosts, vacation-rental owners, STR investors, property
+managers, co-hosting businesses and serviced-apartment operators. Multiple
+properties and multiple platforms from the first row, joined end to end by
+**Property IDs and Booking IDs**: a booking tracker that catches a double
+booking, a formula-driven calendar covering twelve properties at once,
+cleaning jobs generated from the check-outs with a printable turnover
+checklist, an editable platform fee table, and per-property profit that
+includes the mortgage, the rent, the laundry and the supplies.
+
+| File | What it is | Size |
+|---|---|---|
+| [**airbnb-rental-spreadsheet.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/airbnb-rental-spreadsheet.xlsx) | Sample-filled demo — a whole fake portfolio ("Harbour & Pine Stays", 5 properties, 46 bookings, 12 guests, 8 vendors, a failed boiler and a chased payout) so you can see every number work | 1.94 MB |
+| [**airbnb-rental-spreadsheet-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/airbnb-rental-spreadsheet-blank.xlsx) | Empty version — the one you sell / start using | 1.92 MB |
+| [**airbnb-rental-spreadsheet-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/airbnb-rental-spreadsheet-source.zip) | Python source that builds both files | 332 KB |
+
+Docs: [README_AIRBNB.md](README_AIRBNB.md) · [SOURCE_CODE_AIRBNB.md](SOURCE_CODE_AIRBNB.md)
+
+**ADR and RevPAR exclude cleaning fees** (accommodation revenue only), platform
+commission is an editable table rather than a hardcoded percentage, and the
+workbook never claims to synchronise with a booking platform — bookings are
+typed or pasted in.
+
+---
+
 ## H. Daycare & Childcare Business Management Spreadsheet
 
 23 tabs · 143,419 formulas · 178 named ranges · 38,247 unlocked input cells.

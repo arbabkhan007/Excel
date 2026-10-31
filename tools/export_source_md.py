@@ -1100,9 +1100,206 @@ DAYCARE = {
 }
 
 
+_AIRBNB = "airbnb_rental_spreadsheet"
+
+AIRBNB_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_airbnb_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Airbnb & Short-Term Rental Management Spreadsheet.xlsx`.",
+     ["build_airbnb_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the "
+     "sheet writer, the cross sheet names and the demo portfolio. "
+     "These are the parts every tab leans on. `config.py` is also "
+     "where the platform fee table starts out, so a host on any "
+     "platform, in any market, on any commission deal can be matched "
+     "without touching a formula.",
+     [f"{_AIRBNB}/__init__.py",
+      f"{_AIRBNB}/__main__.py",
+      f"{_AIRBNB}/cli.py",
+      f"{_AIRBNB}/config.py",
+      f"{_AIRBNB}/layout.py",
+      f"{_AIRBNB}/formats.py",
+      f"{_AIRBNB}/writer.py",
+      f"{_AIRBNB}/names.py",
+      f"{_AIRBNB}/build.py",
+      f"{_AIRBNB}/sample_data.py"]),
+    ("3. Properties and bookings",
+     "The two registers everything else joins to. A property carries "
+     "its own rate, fees, times and ownership basis, and collects "
+     "twenty-odd calculated columns back from the rest of the "
+     "workbook - occupancy, ADR, RevPAR, profit, margin and its rank "
+     "in the portfolio. A booking turns two dates into nights, looks "
+     "up the nightly rate, applies the platform's commission from the "
+     "editable fee table, and flags a double booking by reading every "
+     "other row on the same property. The shared helpers in "
+     "`common.py` are where the alert colours, the ID lookups and the "
+     "never-blank numeric mirror columns live.",
+     [f"{_AIRBNB}/sheets/__init__.py",
+      f"{_AIRBNB}/sheets/common.py",
+      f"{_AIRBNB}/sheets/properties.py",
+      f"{_AIRBNB}/sheets/bookings.py",
+      f"{_AIRBNB}/sheets/guests.py"]),
+    ("4. The calendar",
+     "A month grid and a fourteen day strip across twelve properties, "
+     "both drawn entirely from the Booking Tracker. No second "
+     "calendar is kept, so nothing can fall out of step: an owner "
+     "stay or a maintenance closure is a booking row with a block "
+     "status, and the grid reads it like any other. The same page "
+     "carries the Turnover Command Centre.",
+     [f"{_AIRBNB}/sheets/calendar.py"]),
+    ("5. The turnover",
+     "What happens between one guest leaving and the next arriving. "
+     "A cleaning job is generated from a check-out rather than typed "
+     "from memory; the nine arrival steps are ticked off before a "
+     "guest lands; and the printable checklist is a one page card "
+     "driven by a single job ID that writes its nine report-back "
+     "flags straight back into the schedule.",
+     [f"{_AIRBNB}/sheets/arrivals.py",
+      f"{_AIRBNB}/sheets/cleaning.py",
+      f"{_AIRBNB}/sheets/turnover.py"]),
+    ("6. The money",
+     "Revenue first, cash second. A booking earns net revenue; a "
+     "payout is what actually arrived, and the variance between the "
+     "two is the column that pays for the spreadsheet. Expenses carry "
+     "a tax category, a recurring frequency and a flag that stops a "
+     "cleaning or maintenance cost being counted twice.",
+     [f"{_AIRBNB}/sheets/payouts.py",
+      f"{_AIRBNB}/sheets/expenses.py",
+      f"{_AIRBNB}/sheets/tax.py"]),
+    ("7. The property itself",
+     "Stock counted the honest way with weeks of cover and a reorder "
+     "flag, repairs with an estimate against an actual and a warranty "
+     "countdown, the reviews with seven sub-ratings and a weakest "
+     "category, and the cleaners and contractors with their rates, "
+     "their completion scores and their insurance expiry dates.",
+     [f"{_AIRBNB}/sheets/supplies.py",
+      f"{_AIRBNB}/sheets/maintenance.py",
+      f"{_AIRBNB}/sheets/reviews.py",
+      f"{_AIRBNB}/sheets/vendors.py"]),
+    ("8. The pages",
+     "The hand-built tabs: the portfolio dashboard, the welcome, the "
+     "settings tab every formula reads, the property-by-month "
+     "performance register, and the monthly and annual reports.",
+     [f"{_AIRBNB}/sheets/performance.py",
+      f"{_AIRBNB}/sheets/dashboard.py",
+      f"{_AIRBNB}/sheets/getting_started.py",
+      f"{_AIRBNB}/sheets/settings.py",
+      f"{_AIRBNB}/sheets/monthly.py",
+      f"{_AIRBNB}/sheets/annual.py"]),
+    ("9. The quality tools",
+     "Not shipped with the workbook, but the reason it can be "
+     "trusted: a static validator that also enforces three promises "
+     "the listing makes, a bracket and placeholder checker, a demo "
+     "data checker that runs before the file is written, and a "
+     "recalculation harness that really evaluates every formula.",
+     ["tools/validate_airbnb_workbook.py",
+      "tools/check_parens.py",
+      "tools/check_airbnb_sample.py",
+      "tools/recalc_check.py"]),
+]
+
+AIRBNB = {
+    "package": _AIRBNB,
+    "builder": "build_airbnb_workbook.py",
+    "doc": "README_AIRBNB.md",
+    "tabs": 20,
+    "title": "Ultimate Airbnb & Short-Term Rental Management Spreadsheet",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_AIRBNB.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on the Dashboard, not on Settings."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 20 tab `.xlsx` workbook with over 138,000 formulas "
+        "for an Airbnb, Vrbo or Booking.com host running more than "
+        "one property: a property register with automatic IDs, rates, "
+        "fees and ownership basis; a booking tracker that turns two "
+        "dates into nights, looks up the nightly rate, applies the "
+        "right platform commission and flags a double booking before "
+        "a guest finds it; a formula-driven calendar showing one "
+        "property by month or twelve properties over a fortnight; a "
+        "guest CRM with repeat-stay history; the nine arrival steps; "
+        "a cleaning schedule generated from the check-outs with a "
+        "printable turnover checklist; expected payouts against what "
+        "the platform really paid; 28 expense categories including "
+        "mortgage interest and rent; supplies with low-stock flags; "
+        "maintenance with warranty countdowns; reviews with seven "
+        "sub-ratings; cleaners and contractors; a tax summary; "
+        "occupancy, ADR and RevPAR by property and month; and "
+        "monthly and annual reports. Document author is **Novality "
+        "Store**; every formula cell is locked and every sheet "
+        "protected with the password **`premium`**, while the cells "
+        "you are meant to type in stay open.",
+        "",
+        "Nothing is hard coded to one platform's pricing. The eight "
+        "platforms, their commission and their payment-processing "
+        "rates are a table on Settings with two spare rows, so a host "
+        "on a different split, in a different market or on a "
+        "negotiated deal types in their own figures and every fee, "
+        "payout and profit figure in the workbook follows. The "
+        "lodging tax and who remits it, the turnover costs, the "
+        "targets, the alert windows and every drop-down list are "
+        "settings, not assumptions.",
+        "",
+        "Two things it refuses to do, both deliberately. It never "
+        "claims to synchronise with a booking platform - there is no "
+        "iCal, no API and no live feed, and the workbook says so on "
+        "the Getting Started tab. And **ADR and RevPAR exclude the "
+        "cleaning fee**, because including it is the most common "
+        "error in rental spreadsheets sold online and it flatters "
+        "both numbers; the validator fails the build if either "
+        "formula so much as mentions cleaning.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and "
+        "on the much older 0.3.0, so it does not rely on anything "
+        "recent. The workbook itself is Excel 2010 safe \u2014 no "
+        "dynamic arrays, no `XLOOKUP`, no `IFS`, nothing that needs "
+        "array entry \u2014 and it opens in Google Sheets, "
+        "LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_airbnb_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --business TEXT       your business name on the cover",
+        "  --owner TEXT          the host or owner's name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --nightly AMOUNT      the default nightly rate",
+        "  --cleaning-fee AMT    the cleaning fee charged to a guest",
+        "  --cleaning-cost AMT   what a turnover actually costs you",
+        "  --deposit AMOUNT      the security deposit",
+        "  --min-nights N        the default minimum stay",
+        "  --tax PERCENT         lodging / occupancy tax rate",
+        "  --tax-self            you remit the lodging tax, not the platform",
+        "  --occupancy-target P  the occupancy you are aiming at",
+        "  --adr-target AMOUNT   the average daily rate you are aiming at",
+        "  --revenue-target AMT  monthly revenue target",
+        "  --properties N        properties the targets are scaled for",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the demo data)",
+        "```",
+    ],
+    "sections": AIRBNB_SECTIONS,
+}
+
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
             "cleaning": CLEANING, "handmade": HANDMADE,
-            "salon": SALON, "daycare": DAYCARE}
+            "salon": SALON, "daycare": DAYCARE,
+            "airbnb": AIRBNB}
 
 
 # ---------------------------------------------------------------------------

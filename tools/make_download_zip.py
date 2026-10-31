@@ -317,6 +317,63 @@ or a licensing compliance system, and it is not accounting, payroll,
 legal or tax advice.
 """
 
+AIRBNB_HOW_TO_RUN = """\
+Ultimate Airbnb & Short-Term Rental Management Spreadsheet
+==========================================================
+
+    pip install XlsxWriter
+    python build_airbnb_workbook.py
+
+The workbook appears in:
+
+    output/Airbnb & Short-Term Rental Management Spreadsheet.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example portfolio
+    --business "Your Lets"  your business name on the cover
+    --owner "Your Name"     the host or owner
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --nightly 185           the default nightly rate
+    --cleaning-fee 95       the cleaning fee charged to a guest
+    --cleaning-cost 65      what a turnover actually costs you
+    --deposit 300           the security deposit
+    --min-nights 2          the default minimum stay
+    --tax 12 --tax-self     lodging tax rate, and that you remit it
+    --occupancy-target 72   the occupancy you are aiming at
+    --adr-target 195        the average daily rate you are aiming at
+    --revenue-target 14000  monthly revenue target
+    --properties 4          properties the targets are scaled for
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 2000             more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium` so the maths cannot be typed over by accident; the
+coloured cells are the ones meant for typing in.
+
+Fill in Settings first - your business name, the pricing defaults, and
+above all the PLATFORM FEE TABLE, because commission varies by
+platform, by market and by account and the whole workbook reads those
+cells.  Then add your properties on Property Database and start typing
+bookings.  Everything else follows from the Property ID and the
+Booking ID: the calendar draws itself, a cleaning job comes from each
+check-out, the payout tab compares what a platform paid against what
+it should have, and the dashboard tells you which property is actually
+making anything.
+
+Two things this workbook does not do, on purpose.  It does not
+synchronise with Airbnb, Vrbo or Booking.com - there is no iCal, no
+API and no live feed, and bookings are typed or pasted in.  And ADR
+and RevPAR exclude the cleaning fee, because including it flatters
+both numbers.
+
+README_AIRBNB.md explains how it is built and what is on each of the
+20 tabs; SOURCE_CODE_AIRBNB.md is the whole program in one readable
+document.
+"""
+
+
 PRODUCTS = {
     "pet": {
         "folder": "pet-sitting-spreadsheet",
@@ -396,6 +453,18 @@ PRODUCTS = {
                   "tools/check_daycare_sample.py",
                   "tools/check_parens.py"] + SHARED_TOOLS,
         "how_to_run": DAYCARE_HOW_TO_RUN,
+    },
+    "airbnb": {
+        "folder": "airbnb-rental-spreadsheet",
+        "output": os.path.join(
+            "download", "airbnb-rental-spreadsheet-source.zip"),
+        "files": ["build_airbnb_workbook.py", "README_AIRBNB.md",
+                  "SOURCE_CODE_AIRBNB.md"],
+        "trees": ["airbnb_rental_spreadsheet"],
+        "tools": ["tools/validate_airbnb_workbook.py",
+                  "tools/check_airbnb_sample.py",
+                  "tools/check_parens.py"] + SHARED_TOOLS,
+        "how_to_run": AIRBNB_HOW_TO_RUN,
     },
 }
 

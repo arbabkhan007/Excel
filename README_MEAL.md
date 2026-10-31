@@ -1,6 +1,6 @@
 # Automated Meal Planner & Grocery List Spreadsheet — generator
 
-> **This repository holds seven spreadsheet products** built on the same
+> **This repository holds eight spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -23,6 +23,9 @@
 > * **Daycare & Childcare Business Management Spreadsheet** —
 >   [README_DAYCARE.md](README_DAYCARE.md),
 >   `build_daycare_workbook.py`, 23 tabs.
+> * **Ultimate Airbnb & Short-Term Rental Management Spreadsheet** —
+>   [README_AIRBNB.md](README_AIRBNB.md),
+>   `build_airbnb_workbook.py`, 20 tabs.
 >
 > Every download is listed in one place in
 > [DOWNLOADS.md](DOWNLOADS.md).
