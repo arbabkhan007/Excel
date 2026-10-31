@@ -264,6 +264,59 @@ any booking platform, and it is not accounting, payroll or tax advice.
 """
 
 
+DAYCARE_HOW_TO_RUN = """\
+Daycare & Childcare Business Management Spreadsheet
+===================================================
+
+    pip install XlsxWriter
+    python build_daycare_workbook.py
+
+The workbook appears in:
+
+    output/Daycare Business Management Spreadsheet.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example nursery
+    --centre "Little Acorns"  your setting's name on the cover
+    --owner "Your Name"     the owner or director
+    --currency EUR-symbol   e.g. --currency "\u20ac" --currency-code EUR
+    --tax 20 --tax-on both  tax rate, and what it applies to
+                            (both | tuition | extras | neither)
+    --capacity 42           licensed places for the whole setting
+    --open-days 5           days open a week
+    --open-hour 7 --close-hour 18   the day your doors are open
+    --weeks-open 51         trading weeks a year
+    --full-time-week 285    the standard full-time weekly fee
+    --sibling-discount 10   sibling discount, percent
+    --hourly 16 --burden 14 default staff rate, employer costs percent
+    --overtime-after 40     hours a week before overtime starts
+    --target 30000          monthly revenue target
+    --password secret       change the sheet protection password
+    --author "Your Name"    change the document author
+    --rows 4000             more rows of capacity in the big registers
+
+Every formula cell is locked and every sheet is protected with the
+password `premium` so the maths cannot be typed over by accident; the
+coloured cells are the ones meant for typing in.
+
+Fill in Settings first - your setting's name, hours, fees, and the age
+band table that holds your own staff-to-child ratios - then the rooms
+on Classroom Management, the families on Parent Database and the
+children on Child Enrollment.  After that the register feeds the
+billing, the billing feeds the invoices, the invoices feed the family
+balances, and the rota feeds the payroll and the ratio alerts.
+README_DAYCARE.md explains how it is built and what is on each of the
+23 tabs; SOURCE_CODE_DAYCARE.md is the whole program in one readable
+document.
+
+The ratio table is a setting, not a rule: type in the bands and the
+adults per child your own licensing requires.  This is a business
+management workbook, not a child development record, a medical record
+or a licensing compliance system, and it is not accounting, payroll,
+legal or tax advice.
+"""
+
 PRODUCTS = {
     "pet": {
         "folder": "pet-sitting-spreadsheet",
@@ -331,6 +384,18 @@ PRODUCTS = {
                   "tools/check_salon_sample.py",
                   "tools/check_parens.py"] + SHARED_TOOLS,
         "how_to_run": SALON_HOW_TO_RUN,
+    },
+    "daycare": {
+        "folder": "daycare-business-spreadsheet",
+        "output": os.path.join(
+            "download", "daycare-business-spreadsheet-source.zip"),
+        "files": ["build_daycare_workbook.py", "README_DAYCARE.md",
+                  "SOURCE_CODE_DAYCARE.md"],
+        "trees": ["daycare_business_spreadsheet"],
+        "tools": ["tools/validate_daycare_workbook.py",
+                  "tools/check_daycare_sample.py",
+                  "tools/check_parens.py"] + SHARED_TOOLS,
+        "how_to_run": DAYCARE_HOW_TO_RUN,
     },
 }
 

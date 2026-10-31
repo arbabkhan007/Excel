@@ -910,9 +910,199 @@ SALON = {
     "sections": SALON_SECTIONS,
 }
 
+# ---------------------------------------------------------------------------
+# Product H - daycare & childcare business management spreadsheet
+# ---------------------------------------------------------------------------
+
+_DAYCARE = "daycare_business_spreadsheet"
+
+DAYCARE_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_daycare_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Daycare Business Management Spreadsheet.xlsx`.",
+     ["build_daycare_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the "
+     "sheet writer, the cross sheet names and the demo nursery. These "
+     "are the parts every tab leans on. `config.py` is also where the "
+     "age bands and the staff-to-child ratios start out, so a setting "
+     "in any country can be matched without touching a formula.",
+     [f"{_DAYCARE}/__init__.py",
+      f"{_DAYCARE}/__main__.py",
+      f"{_DAYCARE}/cli.py",
+      f"{_DAYCARE}/config.py",
+      f"{_DAYCARE}/layout.py",
+      f"{_DAYCARE}/formats.py",
+      f"{_DAYCARE}/writer.py",
+      f"{_DAYCARE}/names.py",
+      f"{_DAYCARE}/build.py",
+      f"{_DAYCARE}/sample_data.py"]),
+    ("3. The children and the families",
+     "The enrolment record that works out an age in months, drops a "
+     "child into an age band, counts the siblings in a family and "
+     "turns any billing basis into a weekly figure; the family record "
+     "that carries one balance for several children; and the waiting "
+     "list with its queue position. The shared helpers in `common.py` "
+     "are where the alert colours, the lookups and the sequence keys "
+     "live.",
+     [f"{_DAYCARE}/sheets/__init__.py",
+      f"{_DAYCARE}/sheets/common.py",
+      f"{_DAYCARE}/sheets/children.py",
+      f"{_DAYCARE}/sheets/parents.py",
+      f"{_DAYCARE}/sheets/waitlist.py"]),
+    ("4. The register",
+     "Check in, check out, who collected them and whether that person "
+     "was on the authorised list. Late arrivals, early pickups, "
+     "missing check-outs and the late collection charge all fall out "
+     "of the two time columns.",
+     [f"{_DAYCARE}/sheets/attendance.py"]),
+    ("5. The money",
+     "Charges first, invoices second. Every fee is a line on Tuition & "
+     "Fees - tuition, registration, meals, transport, late pickup, "
+     "discounts and subsidies - and an invoice is simply the sum of "
+     "the lines pointed at it. Payments, credit notes, refunds and "
+     "write-offs sit in the same ledger, so billed and collected can "
+     "never drift apart.",
+     [f"{_DAYCARE}/sheets/tuition.py",
+      f"{_DAYCARE}/sheets/invoices.py",
+      f"{_DAYCARE}/sheets/expenses.py"]),
+    ("6. The day a parent reads about",
+     "The daily report, the meal log that knows the child's diet and "
+     "allergy level, the medical and medication record, and the "
+     "incident form with the clock running from the accident to the "
+     "moment a parent was told.",
+     [f"{_DAYCARE}/sheets/daily_reports.py",
+      f"{_DAYCARE}/sheets/meals.py",
+      f"{_DAYCARE}/sheets/medical.py",
+      f"{_DAYCARE}/sheets/incidents.py"]),
+    ("7. The team",
+     "Staff records with four certificate expiry dates rolled into one "
+     "countdown, a rota that catches a double shift and splits basic "
+     "from overtime hour by hour, and a payroll tab that knows the "
+     "difference between what somebody is paid and what they cost.",
+     [f"{_DAYCARE}/sheets/staff.py",
+      f"{_DAYCARE}/sheets/schedule.py",
+      f"{_DAYCARE}/sheets/payroll.py"]),
+    ("8. Rooms, stock and paperwork",
+     "Occupancy and empty seats per room, the live staff-to-child "
+     "ratio against the band that room is set to, the stock cupboard "
+     "counted the honest way, the parent conversation log and the "
+     "document tracker that watches every renewal date in the "
+     "building.",
+     [f"{_DAYCARE}/sheets/classrooms.py",
+      f"{_DAYCARE}/sheets/supplies.py",
+      f"{_DAYCARE}/sheets/communication.py",
+      f"{_DAYCARE}/sheets/documents.py"]),
+    ("9. The pages",
+     "The hand-built tabs: the dashboard, the welcome, the settings "
+     "tab every formula reads, the monthly report with its printable "
+     "invoice, and the annual report.",
+     [f"{_DAYCARE}/sheets/dashboard.py",
+      f"{_DAYCARE}/sheets/getting_started.py",
+      f"{_DAYCARE}/sheets/settings.py",
+      f"{_DAYCARE}/sheets/monthly.py",
+      f"{_DAYCARE}/sheets/annual.py"]),
+    ("10. The quality tools",
+     "Not shipped with the workbook, but the reason it can be trusted: "
+     "a static validator, a bracket and placeholder checker, a demo "
+     "data checker that rebuilds the arithmetic in Python, and a "
+     "recalculation harness that really evaluates every formula.",
+     ["tools/validate_daycare_workbook.py",
+      "tools/check_parens.py",
+      "tools/check_daycare_sample.py",
+      "tools/recalc_check.py"]),
+]
+
+DAYCARE = {
+    "package": _DAYCARE,
+    "builder": "build_daycare_workbook.py",
+    "doc": "README_DAYCARE.md",
+    "tabs": 23,
+    "title": "Daycare & Childcare Business Management Spreadsheet",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_DAYCARE.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on the Dashboard, not on Settings."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 23 tab `.xlsx` workbook with over 143,000 formulas: "
+        "enrolment with automatic child IDs, an age in months and an "
+        "age band; families that hold several children and one "
+        "balance; a waiting list with a queue position; a daily "
+        "register with late arrivals, missing check-outs and an "
+        "authorised-pickup check; tuition on six different billing "
+        "bases with sibling discounts and subsidies; a charge ledger "
+        "that adds up into printable invoices and receipts; daily "
+        "reports, meals, allergies and medication, incident forms; "
+        "staff with certificate countdowns, a rota that catches a "
+        "double shift, payroll with employer costs; room occupancy "
+        "with a live staff-to-child ratio alert; expenses, supplies, "
+        "parent conversations and a document renewal tracker; and "
+        "monthly and annual reports. Document author is **Novality "
+        "Store**; every formula cell is locked and every sheet "
+        "protected with the password **`premium`**, while the cells "
+        "you are meant to type in stay open.",
+        "",
+        "Nothing is hard coded to one country's licensing. The age "
+        "bands, the adults each band needs and the maximum group size "
+        "are a table on Settings, so a setting in Ohio, Ontario or "
+        "Oxfordshire types in its own rules and every ratio alert in "
+        "the workbook follows. The tax rate and the two switches that "
+        "say what it applies to, the fees, the late pickup charge, the "
+        "overtime threshold and every drop-down list are settings, not "
+        "assumptions.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and "
+        "on the much older 0.3.0, so it does not rely on anything "
+        "recent. The workbook itself is Excel 2010 safe \u2014 no "
+        "dynamic arrays, no `XLOOKUP`, no `IFS`, nothing that needs "
+        "array entry \u2014 and it opens in Google Sheets, LibreOffice "
+        "and Numbers.",
+        "",
+        "```bash",
+        "python build_daycare_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --centre TEXT         your setting's name on the cover",
+        "  --owner TEXT          the owner or director's name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --tax PERCENT         tax rate, if childcare is taxed near you",
+        "  --tax-on WHAT         both, tuition, extras or neither",
+        "  --capacity N          licensed places for the whole setting",
+        "  --open-days N         days open a week",
+        "  --open-hour N         opening time, e.g. 7 for 7am",
+        "  --close-hour N        closing time, e.g. 18 for 6pm",
+        "  --weeks-open N        trading weeks a year",
+        "  --full-time-week AMT  the standard full-time weekly fee",
+        "  --basis TEXT          the billing basis new children start on",
+        "  --sibling-discount P  sibling discount as a percentage",
+        "  --hourly AMOUNT       default staff hourly rate",
+        "  --burden PERCENT      employer costs on top of wages",
+        "  --overtime-after N    hours a week before overtime starts",
+        "  --target AMOUNT       monthly revenue target",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the demo data)",
+        "```",
+    ],
+    "sections": DAYCARE_SECTIONS,
+}
+
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
             "cleaning": CLEANING, "handmade": HANDMADE,
-            "salon": SALON}
+            "salon": SALON, "daycare": DAYCARE}
 
 
 # ---------------------------------------------------------------------------

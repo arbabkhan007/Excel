@@ -1,6 +1,6 @@
 # Salon Business Management Spreadsheet — generator
 
-> **This repository holds six spreadsheet products** built on the same
+> **This repository holds seven spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store)
 > and the same `premium` sheet protection:
 >
@@ -20,6 +20,12 @@
 >   `build_handmade_workbook.py`, 40 tabs.
 > * **Salon Business Management Spreadsheet** — this README,
 >   `build_salon_workbook.py`, 20 tabs.
+> * **Daycare & Childcare Business Management Spreadsheet** —
+>   [README_DAYCARE.md](README_DAYCARE.md),
+>   `build_daycare_workbook.py`, 23 tabs.
+>
+> Every download is listed in one place in
+> [DOWNLOADS.md](DOWNLOADS.md).
 
 Python code that builds a finished, ready-to-sell Excel workbook for a
 salon: the diary, the client book, the menu priced by the chair hour,

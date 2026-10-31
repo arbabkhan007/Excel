@@ -8,6 +8,23 @@ no macros · no charts · formula cells locked, input cells unlocked.
 
 ---
 
+## H. Daycare & Childcare Business Management Spreadsheet
+
+23 tabs · 143,419 formulas · 178 named ranges · 38,247 unlocked input cells.
+For nurseries, daycare centres, preschools, home childcare and after-school clubs.
+Enrollment, attendance, tuition and invoicing, staff rota and payroll, classroom
+ratios, parent records and every renewal date in the building.
+
+| File | What it is | Size |
+|---|---|---|
+| [**daycare-business-spreadsheet.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/daycare-business-spreadsheet.xlsx) | Sample-filled demo — a whole fake nursery ("Little Acorns Childcare", 34 children, 20 families, 12 staff, 4 rooms) so you can see every number work | 2.41 MB |
+| [**daycare-business-spreadsheet-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/daycare-business-spreadsheet-blank.xlsx) | Empty version — the one you sell / start using | 2.20 MB |
+| [**daycare-business-spreadsheet-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/daycare-business-spreadsheet-source.zip) | Python source that builds both files | 380 KB |
+
+Docs: [README_DAYCARE.md](README_DAYCARE.md) · [SOURCE_CODE_DAYCARE.md](SOURCE_CODE_DAYCARE.md)
+
+---
+
 ## G. Salon Business Management Spreadsheet
 
 20 tabs · 122,614 formulas · 137 named ranges · 28,831 unlocked input cells.
@@ -113,7 +130,7 @@ above and choose **Save link as…**
 ## After you download
 
 1. Open the file in Excel (2010 or newer), Google Sheets, or LibreOffice.
-2. Start on the **Start Here** tab — it explains the tab order and what to fill in first.
+2. Start on the **Start Here** / **Getting Started** tab — it explains the tab order and what to fill in first.
 3. Type only in the unlocked (coloured) cells. Grey/locked cells are formulas.
 4. To unlock a sheet for editing: **Review → Unprotect Sheet**, password **`premium`**.
 5. Open the `-blank` file for real use; keep the sample file as a reference for how it should look.
