@@ -26,7 +26,7 @@ includes the mortgage, the rent, the laundry and the supplies.
 | [**airbnb-rental-spreadsheet-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/airbnb-rental-spreadsheet-blank.xlsx) | Empty version — the one you sell / start using | 1.92 MB |
 | [**airbnb-rental-spreadsheet-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/airbnb-rental-spreadsheet-source.zip) | Python source that builds both files | 332 KB |
 
-Docs: [README_AIRBNB.md](README_AIRBNB.md) · [SOURCE_CODE_AIRBNB.md](SOURCE_CODE_AIRBNB.md)
+Docs: [README_AIRBNB.md](README_AIRBNB.md) · [SOURCE_CODE_AIRBNB.md](SOURCE_CODE_AIRBNB.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_AIRBNB.md) (615 KB)
 
 **ADR and RevPAR exclude cleaning fees** (accommodation revenue only), platform
 commission is an editable table rather than a hardcoded percentage, and the
@@ -48,7 +48,7 @@ ratios, parent records and every renewal date in the building.
 | [**daycare-business-spreadsheet-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/daycare-business-spreadsheet-blank.xlsx) | Empty version — the one you sell / start using | 2.20 MB |
 | [**daycare-business-spreadsheet-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/daycare-business-spreadsheet-source.zip) | Python source that builds both files | 380 KB |
 
-Docs: [README_DAYCARE.md](README_DAYCARE.md) · [SOURCE_CODE_DAYCARE.md](SOURCE_CODE_DAYCARE.md)
+Docs: [README_DAYCARE.md](README_DAYCARE.md) · [SOURCE_CODE_DAYCARE.md](SOURCE_CODE_DAYCARE.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_DAYCARE.md) (716 KB)
 
 ---
 
@@ -63,7 +63,7 @@ For independent salon owners, hair stylists, nail techs, lash artists, beauty st
 | [**salon-business-spreadsheet-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/salon-business-spreadsheet-blank.xlsx) | Empty version — the one you sell / start using | 1.78 MB |
 | [**salon-business-spreadsheet-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/salon-business-spreadsheet-source.zip) | Python source that builds both files | 288 KB |
 
-Docs: [README_SALON.md](README_SALON.md) · [SOURCE_CODE_SALON.md](SOURCE_CODE_SALON.md)
+Docs: [README_SALON.md](README_SALON.md) · [SOURCE_CODE_SALON.md](SOURCE_CODE_SALON.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_SALON.md) (542 KB)
 
 ---
 
@@ -77,7 +77,7 @@ Docs: [README_SALON.md](README_SALON.md) · [SOURCE_CODE_SALON.md](SOURCE_CODE_S
 | [**handmade-pricing-calculator-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/handmade-pricing-calculator-blank.xlsx) | Empty version | 1.64 MB |
 | [**handmade-pricing-calculator-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/handmade-pricing-calculator-source.zip) | Python source | 408 KB |
 
-Docs: [README_HANDMADE.md](README_HANDMADE.md) · [SOURCE_CODE_HANDMADE.md](SOURCE_CODE_HANDMADE.md)
+Docs: [README_HANDMADE.md](README_HANDMADE.md) · [SOURCE_CODE_HANDMADE.md](SOURCE_CODE_HANDMADE.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_HANDMADE.md) (842 KB)
 
 ---
 
@@ -91,7 +91,7 @@ Docs: [README_HANDMADE.md](README_HANDMADE.md) · [SOURCE_CODE_HANDMADE.md](SOUR
 | [**cleaning-business-crm-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/cleaning-business-crm-blank.xlsx) | Empty version | 1.65 MB |
 | [**cleaning-business-crm-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/cleaning-business-crm-source.zip) | Python source | 374 KB |
 
-Docs: [README_CLEANING.md](README_CLEANING.md) · [SOURCE_CODE_CLEANING.md](SOURCE_CODE_CLEANING.md)
+Docs: [README_CLEANING.md](README_CLEANING.md) · [SOURCE_CODE_CLEANING.md](SOURCE_CODE_CLEANING.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_CLEANING.md) (731 KB)
 
 ---
 
@@ -105,7 +105,7 @@ Docs: [README_CLEANING.md](README_CLEANING.md) · [SOURCE_CODE_CLEANING.md](SOUR
 | [**meal-planner-grocery-list-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/meal-planner-grocery-list-blank.xlsx) | Empty version | 1.04 MB |
 | [**meal-planner-grocery-list-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/meal-planner-grocery-list-source.zip) | Python source | 306 KB |
 
-Docs: [README_MEAL.md](README_MEAL.md) · [SOURCE_CODE_MEAL.md](SOURCE_CODE_MEAL.md)
+Docs: [README_MEAL.md](README_MEAL.md) · [SOURCE_CODE_MEAL.md](SOURCE_CODE_MEAL.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_MEAL.md) (599 KB)
 
 ---
 
@@ -119,7 +119,7 @@ Docs: [README_MEAL.md](README_MEAL.md) · [SOURCE_CODE_MEAL.md](SOURCE_CODE_MEAL
 | [**social-media-content-planner-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-blank.xlsx) | Empty version | 1.39 MB |
 | [**social-media-content-planner-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/social-media-content-planner-source.zip) | Python source | 296 KB |
 
-Docs: [README_SOCIAL.md](README_SOCIAL.md) · [SOURCE_CODE_SOCIAL.md](SOURCE_CODE_SOCIAL.md)
+Docs: [README_SOCIAL.md](README_SOCIAL.md) · [SOURCE_CODE_SOCIAL.md](SOURCE_CODE_SOCIAL.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_SOCIAL.md) (595 KB)
 
 ---
 
@@ -133,7 +133,7 @@ Docs: [README_SOCIAL.md](README_SOCIAL.md) · [SOURCE_CODE_SOCIAL.md](SOURCE_COD
 | [**pet-sitting-business-spreadsheet-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-business-spreadsheet-blank.xlsx) | Empty version | 834 KB |
 | [**pet-sitting-spreadsheet-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/pet-sitting-spreadsheet-source.zip) | Python source | 249 KB |
 
-Docs: [README.md](README.md) · [SOURCE_CODE.md](SOURCE_CODE.md)
+Docs: [README.md](README.md) · [SOURCE_CODE.md](SOURCE_CODE.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE.md) (486 KB)
 
 ---
 
