@@ -1,6 +1,6 @@
 # Ultimate Airbnb & Short-Term Rental Management Spreadsheet — generator
 
-> **This repository holds eight spreadsheet products** built on the same
+> **This repository holds nine spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store)
 > and the same `premium` sheet protection:
 >
@@ -26,6 +26,9 @@
 >   `build_daycare_workbook.py`, 23 tabs.
 > * **Ultimate Airbnb & Short-Term Rental Management Spreadsheet** —
 >   this README, `build_airbnb_workbook.py`, 20 tabs.
+> * **Wedding Photographer Business Manager** —
+>   [README_WEDDING.md](README_WEDDING.md),
+>   `build_wedding_workbook.py`, 23 tabs.
 >
 > Every download is listed in one place in
 > [DOWNLOADS.md](DOWNLOADS.md).

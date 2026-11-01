@@ -317,6 +317,60 @@ or a licensing compliance system, and it is not accounting, payroll,
 legal or tax advice.
 """
 
+WEDDING_HOW_TO_RUN = """\
+Wedding Photographer Business Manager
+=====================================
+
+    pip install XlsxWriter
+    python build_wedding_workbook.py
+
+The workbook appears in:
+
+    output/Wedding Photographer Business Manager.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example studio
+    --studio "Your Studio"  your studio name on the cover
+    --owner "Your Name"     the photographer
+    --currency GBP-symbol   e.g. --currency "\u00a3" --currency-code GBP
+    --deposit 30            the deposit percentage that holds a date
+    --final-days 14         days before the wedding the balance is due
+    --extra-hour 250        the charge for an extra hour on the day
+    --second-shooter 350    what a second shooter costs you
+    --mileage 0.67          the mileage rate per mile
+    --delivery-days 42      the gallery turnaround you promise
+    --editing-hours 18      honest editing hours per wedding
+    --tax 20                sales tax or VAT on packages
+    --weddings-target 24    how many weddings a year you want
+    --revenue-target 72000  revenue target for the year
+    --margin-target 55      the profit margin you are aiming at
+    --rows 400              rows of capacity in the big registers
+    --no-protect            leave the sheets unlocked while you edit
+
+Everything else - prices, turnaround promises, targets, alert
+windows and all 48 drop-down lists - is on the Settings & Lists tab
+inside the workbook. You should not need to edit the Python to make
+this fit your studio.
+
+The one thing to understand
+---------------------------
+Every wedding gets a unique Booking ID (WED-0001) on the Wedding
+Bookings tab. Eleven other tabs join back to it through a drop-down,
+which is what makes the payment, the timeline, the shot list, the
+editing job and the gallery all the same wedding. Never type a
+Booking ID by hand; always pick it from the list.
+
+What this is not
+----------------
+This is a business organisation tool. It does not connect to any
+booking platform, calendar or payment processor - you type what
+happened and the formulas do the arithmetic. It tracks documents;
+it does not generate or execute legally binding contracts, and
+nothing it produces is a legal instrument or legal, accounting or
+tax advice.
+"""
+
 AIRBNB_HOW_TO_RUN = """\
 Ultimate Airbnb & Short-Term Rental Management Spreadsheet
 ==========================================================
@@ -465,6 +519,20 @@ PRODUCTS = {
                   "tools/check_airbnb_sample.py",
                   "tools/check_parens.py"] + SHARED_TOOLS,
         "how_to_run": AIRBNB_HOW_TO_RUN,
+    },
+    "wedding": {
+        "folder": "wedding-photographer-business-manager",
+        "output": os.path.join(
+            "download",
+            "wedding-photographer-business-manager-source.zip"),
+        "files": ["build_wedding_workbook.py", "README_WEDDING.md",
+                  "SOURCE_CODE_WEDDING.md"],
+        "trees": ["wedding_photography_spreadsheet"],
+        "tools": ["tools/validate_wedding_workbook.py",
+                  "tools/check_wedding_sample.py",
+                  "tools/check_wedding_specs.py",
+                  "tools/check_parens.py"] + SHARED_TOOLS,
+        "how_to_run": WEDDING_HOW_TO_RUN,
     },
 }
 

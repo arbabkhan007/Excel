@@ -1296,10 +1296,221 @@ AIRBNB = {
 }
 
 
+_WED = "wedding_photography_spreadsheet"
+
+WEDDING_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_wedding_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Wedding Photographer Business Manager.xlsx`.",
+     ["build_wedding_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the "
+     "sheet writer, the cross sheet names and the worked example. "
+     "These are the parts every tab leans on. `config.py` holds every "
+     "price, every turnaround promise and every disclaimer, so a "
+     "photographer in another country, on another pricing model, can "
+     "be matched without touching a formula.",
+     [f"{_WED}/__init__.py",
+      f"{_WED}/__main__.py",
+      f"{_WED}/cli.py",
+      f"{_WED}/config.py",
+      f"{_WED}/layout.py",
+      f"{_WED}/formats.py",
+      f"{_WED}/writer.py",
+      f"{_WED}/names.py",
+      f"{_WED}/sample_data.py",
+      f"{_WED}/build.py"]),
+    ("3. Shared column factories",
+     "The helpers every register uses: automatic ID columns, date and "
+     "month keys, ranking columns, alert conditional formats and the "
+     "lookup that joins a row back to its wedding.",
+     [f"{_WED}/sheets/__init__.py",
+      f"{_WED}/sheets/common.py"]),
+    ("4. Settings and the two front pages",
+     "Settings & Lists is the only tab a buyer has to fill in before "
+     "anything else works: the studio, the prices, the turnaround "
+     "promises, the targets and the 48 drop-down lists. The Dashboard "
+     "is the centrepiece - money, this month, the next fortnight, and "
+     "a matrix that counts every alert on eleven registers. Getting "
+     "Started explains the Booking ID and is honest about what the "
+     "workbook is not.",
+     [f"{_WED}/sheets/settings.py",
+      f"{_WED}/sheets/dashboard.py",
+      f"{_WED}/sheets/getting_started.py"]),
+    ("5. Enquiry to confirmed booking",
+     "Workflow one. The lead tracker chases an enquiry on your own "
+     "schedule and reports the win rate; the client CRM holds the "
+     "couple; Wedding Bookings mints the Booking ID that every other "
+     "tab joins to.",
+     [f"{_WED}/sheets/leads.py",
+      f"{_WED}/sheets/clients.py",
+      f"{_WED}/sheets/bookings.py"]),
+    ("6. Package to payment collection",
+     "Workflow two. What a package costs you to deliver and earns per "
+     "hour, the documents that have to come back signed, and the "
+     "deposit, instalments and balance with an overdue count in days.",
+     [f"{_WED}/sheets/packages.py",
+      f"{_WED}/sheets/contracts.py",
+      f"{_WED}/sheets/payments.py"]),
+    ("7. The wedding day itself",
+     "Workflow three, and the part most spreadsheets skip. The "
+     "timeline is built from offsets against the ceremony time, so "
+     "moving the ceremony moves the day. The shot list holds the "
+     "must-haves and the family groups, and the questionnaire prints "
+     "them for the couple to confirm. The calendar shows twelve "
+     "months of squares and turns red when two couples want the same "
+     "Saturday.",
+     [f"{_WED}/sheets/timeline.py",
+      f"{_WED}/sheets/shots.py",
+      f"{_WED}/sheets/staff.py",
+      f"{_WED}/sheets/calendar.py",
+      f"{_WED}/sheets/questionnaire.py"]),
+    ("8. Editing to final gallery delivery",
+     "Workflow four. Ten editing steps against a due date derived "
+     "from the turnaround you promised, then the gallery: delivery, "
+     "views, downloads, album orders, after-sales and the expiry "
+     "date that is worth warning a couple about.",
+     [f"{_WED}/sheets/editing.py",
+      f"{_WED}/sheets/gallery.py"]),
+    ("9. What each wedding actually made",
+     "Workflow five. Equipment, travel, marketing and every other "
+     "cost, tagged to a wedding or to the business, feeding a profit "
+     "analysis that reports margin and profit per hour - then the "
+     "reviews that bring the next booking, and the monthly and "
+     "annual reports.",
+     [f"{_WED}/sheets/equipment.py",
+      f"{_WED}/sheets/travel.py",
+      f"{_WED}/sheets/marketing.py",
+      f"{_WED}/sheets/expenses.py",
+      f"{_WED}/sheets/profit.py",
+      f"{_WED}/sheets/reviews.py",
+      f"{_WED}/sheets/reports.py"]),
+    ("10. The quality tools",
+     "Not shipped with the workbook, but the reason it can be "
+     "trusted: a static validator that checks the Booking ID join in "
+     "both directions and enforces the promises the listing makes, a "
+     "bracket and placeholder checker, a specification checker and a "
+     "sample data checker that both run before the file is written, "
+     "and a recalculation harness that really evaluates every "
+     "formula.",
+     ["tools/validate_wedding_workbook.py",
+      "tools/check_parens.py",
+      "tools/check_wedding_specs.py",
+      "tools/check_wedding_sample.py",
+      "tools/recalc_check.py"]),
+]
+
+WEDDING = {
+    "package": _WED,
+    "builder": "build_wedding_workbook.py",
+    "doc": "README_WEDDING.md",
+    "tabs": 23,
+    "title": "Wedding Photographer Business Manager",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_WEDDING.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on the Dashboard, not on Settings."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 23 tab `.xlsx` workbook with nearly 115,000 formulas "
+        "for a wedding photographer: a lead tracker that chases an "
+        "enquiry on your own schedule and reports the win rate; a "
+        "client CRM; a booking register of 87 columns where one "
+        "wedding is one row; a twelve month calendar that turns red "
+        "when two couples want the same Saturday; packages costed to "
+        "a profit-per-hour figure; contracts and documents tracked "
+        "through to counter-signed; deposits, instalments and "
+        "balances with an overdue count in days; a wedding day "
+        "timeline built from offsets against the ceremony time; a "
+        "shot list with must-haves, family groups and who asked for "
+        "them; second shooters with rates and insurance expiry; a ten "
+        "step editing workflow against the turnaround you promised; "
+        "gallery delivery with views, downloads, album orders and an "
+        "expiry warning; equipment with shutter counts and "
+        "replacement costs; travel and mileage against the travel fee "
+        "you charged; a marketing calendar that reports enquiries per "
+        "post; 27 expense categories; a profit analysis per wedding; "
+        "a printable client questionnaire; reviews and referrals; and "
+        "monthly and annual reports. Document author is **Novality "
+        "Store**; every formula cell is locked and every sheet "
+        "protected with the password **`premium`**, while the cells "
+        "you are meant to type in stay open.",
+        "",
+        "One technical decision holds the product together: **every "
+        "wedding gets a unique Booking ID** (`WED-0001`), generated "
+        "once on Wedding Bookings and chosen from a drop-down "
+        "everywhere else. Eleven registers join back through it, so "
+        "the payment, the timeline, the shot list, the editing job "
+        "and the gallery are all demonstrably the same wedding. The "
+        "validator checks that join in both directions on every "
+        "build, because a Booking ID that can be mistyped is a "
+        "spreadsheet full of quietly disconnected records.",
+        "",
+        "Nothing is hard coded. The deposit percentage, the payment "
+        "schedule, the extra hour rate, what a second shooter costs, "
+        "the mileage rate and the free mileage allowance, the editing "
+        "hours and rate, what your own hour is worth, the preview, "
+        "gallery and album turnarounds, the tax rate and whether tax "
+        "applies at all, every target and every alert window and all "
+        "48 drop-down lists are settings, not assumptions.",
+        "",
+        "Two things it refuses to do, both deliberately. It never "
+        "claims to connect to a booking platform or a calendar "
+        "service - you type what happened and the formulas do the "
+        "arithmetic - and it **tracks documents rather than "
+        "pretending to generate legally binding contracts**. The "
+        "Getting Started tab says both in plain words and the "
+        "validator fails the build if any cell claims otherwise.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and "
+        "on the much older 0.3.0, so it does not rely on anything "
+        "recent. The workbook itself is Excel 2010 safe \u2014 no "
+        "dynamic arrays, no `XLOOKUP`, no `IFS`, nothing that needs "
+        "array entry \u2014 and it opens in Google Sheets, "
+        "LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_wedding_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --studio TEXT         your studio name on the cover",
+        "  --owner TEXT          the photographer's name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --deposit PERCENT     the deposit that holds a date",
+        "  --final-days N        days before the wedding the balance is due",
+        "  --extra-hour AMOUNT   the charge for an extra hour on the day",
+        "  --second-shooter AMT  what a second shooter costs you",
+        "  --mileage RATE        the mileage rate per mile",
+        "  --delivery-days N     the gallery turnaround you promise",
+        "  --editing-hours N     honest editing hours per wedding",
+        "  --tax PERCENT         sales tax or VAT on packages",
+        "  --weddings-target N   how many weddings a year you want",
+        "  --revenue-target AMT  revenue target for the year",
+        "  --margin-target P     the profit margin you are aiming at",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the example)",
+        "```",
+    ],
+    "sections": WEDDING_SECTIONS,
+}
+
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
             "cleaning": CLEANING, "handmade": HANDMADE,
             "salon": SALON, "daycare": DAYCARE,
-            "airbnb": AIRBNB}
+            "airbnb": AIRBNB, "wedding": WEDDING}
 
 
 # ---------------------------------------------------------------------------

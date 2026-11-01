@@ -8,6 +8,36 @@ no macros · no charts · formula cells locked, input cells unlocked.
 
 ---
 
+## J. Wedding Photographer Business Manager
+
+23 tabs · 114,996 formulas · 262 named ranges · 8,353 unlocked input cells.
+For wedding photographers, freelance photographers and photography studios.
+Every tab joined end to end by a **Booking ID** (`WED-0001`), so one wedding
+is one record from first enquiry to final album: a lead tracker that chases
+enquiries and reports the win rate, a twelve-month calendar that turns red
+when two couples want the same Saturday, packages costed down to profit per
+hour, deposits and balances with an overdue count in days, a wedding-day
+timeline built from offsets against the ceremony time, a shot list with
+must-haves and family groups, a ten-step editing workflow against the
+turnaround you promised, gallery delivery with album orders and expiry
+warnings, and a profit analysis that finally answers which weddings made
+money.
+
+| File | What it is | Size |
+|---|---|---|
+| [**wedding-photographer-business-manager.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/wedding-photographer-business-manager.xlsx) | Sample-filled demo — a whole fake studio ("Rowan & Fern Photography", 15 weddings, 24 leads, a gallery 50 days late, an unpaid balance, a double-booked Saturday and an elopement priced at a loss) so you can see every alert work | 1.69 MB |
+| [**wedding-photographer-business-manager-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/wedding-photographer-business-manager-blank.xlsx) | Empty version — the one you sell / start using | 1.64 MB |
+| [**wedding-photographer-business-manager-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/wedding-photographer-business-manager-source.zip) | Python source that builds both files | 353 KB |
+
+Docs: [README_WEDDING.md](README_WEDDING.md) · [SOURCE_CODE_WEDDING.md](SOURCE_CODE_WEDDING.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_WEDDING.md) (663 KB)
+
+**This is a business organisation tool, not a live booking integration and
+not a contract-signing platform.** It never claims to sync with a booking
+platform or calendar — you type what happened and the formulas do the rest —
+and it **tracks documents rather than generating legally binding contracts**.
+
+---
+
 ## I. Ultimate Airbnb & Short-Term Rental Management Spreadsheet
 
 20 tabs · 138,641 formulas · 147 named ranges · 3,898 unlocked input cells.
