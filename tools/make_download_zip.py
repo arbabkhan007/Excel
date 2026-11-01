@@ -371,6 +371,73 @@ nothing it produces is a legal instrument or legal, accounting or
 tax advice.
 """
 
+INVENTORY_HOW_TO_RUN = """\
+Ultimate Inventory & Wholesale Order Manager
+============================================
+
+    pip install XlsxWriter
+    python build_inventory_workbook.py
+
+The workbook appears in:
+
+    output/Ultimate Inventory & Wholesale Order Manager.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example business
+    --business "Your Shop"  your business name on the cover
+    --owner "Your Name"     the owner
+    --currency GBP-symbol   e.g. --currency "\u00a3" --currency-code GBP
+    --markup 2.5            the markup a new product starts at
+    --min-margin 25         the margin you refuse to go under
+    --lead-time 14          lead time when a supplier has none set
+    --safety-days 10        days of safety stock in the reorder point
+    --sales-window 90       days the sales rate averages over
+    --marketplace-fee 6.5   marketplace commission percentage
+    --payment-fee 2.9       payment processing percentage
+    --tax 20                sales tax or VAT on sales
+    --revenue-target 216000 revenue target for the year
+    --margin-target 55      the gross margin you are aiming at
+    --rows 400              rows of capacity in the big registers
+    --no-protect            leave the sheets unlocked while you edit
+
+Everything else - price breaks, customer tiers, alert thresholds,
+targets and all 40 drop-down lists - is on the Settings & Lists tab
+inside the workbook. You should not need to edit the Python to make
+this fit your business.
+
+The one thing to understand
+---------------------------
+Every separately stocked variant gets its own SKU on the Product &
+SKU Database tab. Sixteen other tabs join back to it through a
+drop-down, which is what makes the purchase order, the stock
+figure, the wholesale line and the profit ranking all the same
+product. Never type a SKU by hand; always pick it from the list.
+
+Stock is worked out, not typed
+------------------------------
+The Inventory Tracker has no cells you can type in. What you have
+is opening stock, plus receipts, minus sales, plus returns, minus
+damage, plus or minus adjustments - each of them a row on another
+tab. To correct a count, post an adjustment on the Stock Movement
+Log. That way the number always has a reason behind it.
+
+Reserved is not the same as shipped
+-----------------------------------
+Confirming a wholesale order reserves those units: they come out of
+available stock without being treated as gone. That is what stops
+the same stock being promised to two customers.
+
+What this is not
+----------------
+This is a workbook. It does not connect to Etsy, Shopify, Amazon,
+eBay or any other marketplace - you enter or paste your orders and
+the formulas do the arithmetic. Costing is weighted average
+throughout, and nothing here is accounting or tax advice; check
+your figures with an accountant.
+"""
+
+
 AIRBNB_HOW_TO_RUN = """\
 Ultimate Airbnb & Short-Term Rental Management Spreadsheet
 ==========================================================
@@ -533,6 +600,20 @@ PRODUCTS = {
                   "tools/check_wedding_specs.py",
                   "tools/check_parens.py"] + SHARED_TOOLS,
         "how_to_run": WEDDING_HOW_TO_RUN,
+    },
+    "inventory": {
+        "folder": "ultimate-inventory-wholesale-order-manager",
+        "output": os.path.join(
+            "download",
+            "inventory-wholesale-order-manager-source.zip"),
+        "files": ["build_inventory_workbook.py", "README_INVENTORY.md",
+                  "SOURCE_CODE_INVENTORY.md"],
+        "trees": ["inventory_wholesale_spreadsheet"],
+        "tools": ["tools/validate_inventory_workbook.py",
+                  "tools/check_inventory_sample.py",
+                  "tools/check_inventory_specs.py",
+                  "tools/check_parens.py"] + SHARED_TOOLS,
+        "how_to_run": INVENTORY_HOW_TO_RUN,
     },
 }
 

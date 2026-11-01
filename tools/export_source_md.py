@@ -1507,10 +1507,263 @@ WEDDING = {
 }
 
 
+_INV = "inventory_wholesale_spreadsheet"
+
+INVENTORY_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_inventory_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Ultimate Inventory & Wholesale Order Manager.xlsx`.",
+     ["build_inventory_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the "
+     "sheet writer, the cross sheet names and the worked example. "
+     "These are the parts every tab leans on. `config.py` holds every "
+     "price break, every status set, every alert threshold and every "
+     "disclaimer, so a candle maker, a boutique and a wholesale "
+     "distributor can all be matched without touching a formula.",
+     [f"{_INV}/__init__.py",
+      f"{_INV}/__main__.py",
+      f"{_INV}/cli.py",
+      f"{_INV}/config.py",
+      f"{_INV}/layout.py",
+      f"{_INV}/formats.py",
+      f"{_INV}/writer.py",
+      f"{_INV}/names.py",
+      f"{_INV}/sample_data.py",
+      f"{_INV}/build.py"]),
+    ("3. Shared column factories",
+     "The helpers every register uses: automatic ID columns, date and "
+     "month keys, ranking columns, alert conditional formats, the "
+     "status-set tests that decide what counts as reserved or "
+     "shipped, and the weighted average cost lookup that every "
+     "margin in the workbook is measured against.",
+     [f"{_INV}/sheets/__init__.py",
+      f"{_INV}/sheets/common.py"]),
+    ("4. Settings and the two front pages",
+     "Settings & Lists is the only tab a buyer has to fill in before "
+     "anything else works: the business, the markup and margin floor, "
+     "the lead time and safety stock, the selling fees, the targets "
+     "and the 40 drop-down lists. The Dashboard is the centrepiece - "
+     "stock value, what is out of stock, what needs ordering, what is "
+     "reserved and unpicked, what is late, and a matrix that counts "
+     "every alert on seventeen registers. Getting Started explains "
+     "the SKU and is honest about what the workbook is not.",
+     [f"{_INV}/sheets/settings.py",
+      f"{_INV}/sheets/dashboard.py",
+      f"{_INV}/sheets/getting_started.py"]),
+    ("5. Product, SKU and stock",
+     "Workflow one, and the decision the rest of the product rests "
+     "on. The catalogue mints a Product ID and flags a SKU entered "
+     "twice. The Inventory Tracker holds no typed numbers at all: "
+     "every figure on it is derived from the transaction registers, "
+     "and reserved stock is kept separate from available stock so a "
+     "confirmed order cannot be sold twice. The Stock Movement Log "
+     "records the things that are not purchases, sales or returns - "
+     "damage, loss, samples, production use, transfers - and keeps "
+     "manual corrections in their own audited column.",
+     [f"{_INV}/sheets/products.py",
+      f"{_INV}/sheets/inventory.py",
+      f"{_INV}/sheets/movements.py"]),
+    ("6. Supplier, purchase order, receiving",
+     "Workflow two. Suppliers are scored on the lead time they "
+     "actually deliver against the one they quote. Purchase orders "
+     "carry freight into a landed cost per unit, track part "
+     "deliveries line by line, compare the invoice to the order, and "
+     "refuse to let the same PO line be received twice without "
+     "saying so.",
+     [f"{_INV}/sheets/suppliers.py",
+      f"{_INV}/sheets/purchases.py"]),
+    ("7. Wholesale customer, tiered price, fulfilment",
+     "Workflow three, and the half of this product its competitors "
+     "do not have. A trade CRM with terms, credit limits and what "
+     "each account is worth; price breaks you set yourself, checked "
+     "against the weighted average cost and against your own floor "
+     "price; and an order register that reserves stock on "
+     "confirmation, tells you what you are short before you promise "
+     "it, and ages the invoice afterwards.",
+     [f"{_INV}/sheets/customers.py",
+      f"{_INV}/sheets/pricing.py",
+      f"{_INV}/sheets/orders.py"]),
+    ("8. Sales, reordering and what the stock is worth",
+     "Workflow four. Retail sales across ten channels with the "
+     "marketplace and payment fees taken out, so the profit column "
+     "is the money that actually arrived. The reorder planner turns "
+     "the sales rate and the real lead time into a reorder point, a "
+     "suggested quantity rounded to the case, and the date you have "
+     "to order by. The valuation tab is the single costing method - "
+     "weighted average - that every other margin in the workbook "
+     "reads.",
+     [f"{_INV}/sheets/retail.py",
+      f"{_INV}/sheets/reorder.py",
+      f"{_INV}/sheets/valuation.py"]),
+    ("9. Returns, locations and counting the shelf",
+     "The registers that keep the stock figure honest. Returns decide "
+     "for themselves whether the unit goes back on the shelf or is "
+     "written off. Locations split one SKU across bins without "
+     "losing the total. The stock audit never overwrites stock: a "
+     "count produces a variance, and you post the adjustment "
+     "yourself, which is the only way the number stays explainable.",
+     [f"{_INV}/sheets/returns.py",
+      f"{_INV}/sheets/locations.py",
+      f"{_INV}/sheets/audit.py"]),
+    ("10. What each product actually made",
+     "Workflow five. Product performance ranks the catalogue by "
+     "profit, by return on stock and by how long it has been sitting "
+     "there. The expense tracker keeps buying stock out of the "
+     "operating total on purpose. The profit analysis puts the "
+     "month-by-month picture together, and the reports and printable "
+     "documents are the pages you hand to somebody else.",
+     [f"{_INV}/sheets/performance.py",
+      f"{_INV}/sheets/expenses.py",
+      f"{_INV}/sheets/profit.py",
+      f"{_INV}/sheets/monthly.py",
+      f"{_INV}/sheets/annual.py",
+      f"{_INV}/sheets/printables.py"]),
+    ("11. The quality tools",
+     "Not shipped with the workbook, but the reason it can be "
+     "trusted: a static validator that checks the SKU join in both "
+     "directions and holds the five technical decisions to account, "
+     "a bracket and placeholder checker, a specification checker and "
+     "a sample data checker that both run before the file is "
+     "written, and a recalculation harness that really evaluates "
+     "every formula.",
+     ["tools/validate_inventory_workbook.py",
+      "tools/check_parens.py",
+      "tools/check_inventory_specs.py",
+      "tools/check_inventory_sample.py",
+      "tools/recalc_check.py"]),
+]
+
+INVENTORY = {
+    "package": _INV,
+    "builder": "build_inventory_workbook.py",
+    "doc": "README_INVENTORY.md",
+    "tabs": 23,
+    "title": "Ultimate Inventory & Wholesale Order Manager",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_INVENTORY.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on the Dashboard, not on Settings."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 23 tab `.xlsx` workbook with over 136,000 formulas "
+        "for anybody who buys stock and sells it: a product database "
+        "where every separately stocked variant has its own SKU; a "
+        "stock tracker with nothing typed on it at all; a movement "
+        "log for damage, loss, samples and transfers; suppliers "
+        "scored on the lead time they actually deliver; purchase "
+        "orders with landed costs, part deliveries and a "
+        "duplicate-receiving guard; a wholesale CRM with terms and "
+        "credit limits; price breaks you set yourself, checked "
+        "against cost and against your own floor; wholesale orders "
+        "that reserve stock the moment they are confirmed; retail "
+        "sales across ten channels with the platform fees taken out; "
+        "a reorder planner that works out the date you have to order "
+        "by; weighted average valuation and COGS; returns that decide "
+        "whether a unit goes back on the shelf; bin locations; stock "
+        "counts that raise a variance instead of overwriting the "
+        "number; profit per product; and printable purchase orders, "
+        "invoices and picking lists. Document author is **Novality "
+        "Store**; every formula cell is locked and every sheet "
+        "protected with the password **`premium`**, while the cells "
+        "you are meant to type in stay open.",
+        "",
+        "**Stock is derived, never typed.** The Inventory Tracker has "
+        "no input columns. What you have is opening stock, plus what "
+        "was received against a purchase order, minus what was sold "
+        "retail and wholesale, plus what came back, minus what was "
+        "damaged, plus or minus what you adjusted - and every one of "
+        "those terms is a row somebody entered on another tab. A "
+        "stock figure you can type over is a stock figure that has "
+        "stopped meaning anything, which is how most inventory "
+        "spreadsheets quietly fail in their second month.",
+        "",
+        "**Reserved stock is separate from available stock.** "
+        "Confirming a wholesale order takes those units out of "
+        "availability without pretending they have shipped, so the "
+        "same ninety candles cannot be promised to two shops. The "
+        "order register tells you what you are short before you "
+        "promise it, not after.",
+        "",
+        "**One costing method, used everywhere.** Weighted average, "
+        "from the opening value plus everything received, applied "
+        "identically in the valuation, in the retail margin, in the "
+        "wholesale line profit and in the profit-by-product ranking. "
+        "Mixing methods between tabs is the most common way these "
+        "workbooks produce two different answers to the same "
+        "question.",
+        "",
+        "**Receiving twice cannot double-count.** A purchase order "
+        "line that appears twice for the same SKU is flagged before "
+        "the delivery is counted, because the easiest way to invent "
+        "stock that does not exist is to receive the same pallet on "
+        "two rows.",
+        "",
+        "Nothing is hard coded. The markup a new product starts at, "
+        "the margin you refuse to go under, the lead time, the days "
+        "of safety stock, the window the sales rate averages over, "
+        "when stock counts as slow or dead, the marketplace and "
+        "payment fees, the tax rate and whether tax applies at all, "
+        "the three price breaks, the five customer tiers and their "
+        "multipliers, every target, every alert threshold and all 40 "
+        "drop-down lists are settings, not assumptions.",
+        "",
+        "One thing it refuses to do, deliberately. It never claims "
+        "to synchronise with Etsy, Shopify, Amazon or anything else "
+        "- you enter or paste your orders and the formulas do the "
+        "arithmetic. The Getting Started tab says so in plain words "
+        "and the validator fails the build if any cell claims "
+        "otherwise.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and "
+        "on the much older 0.3.0, so it does not rely on anything "
+        "recent. The workbook itself is Excel 2010 safe \u2014 no "
+        "dynamic arrays, no `XLOOKUP`, no `IFS`, nothing that needs "
+        "array entry \u2014 and it opens in Google Sheets, "
+        "LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_inventory_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --no-protect          leave the sheets unlocked",
+        "  --password TEXT       protection password (default: premium)",
+        "  --author TEXT         document author  (default: Novality Store)",
+        "  --business TEXT       your business name on the cover",
+        "  --owner TEXT          the owner's name",
+        "  --currency SYMBOL     currency symbol  (default: $)",
+        "  --currency-code CODE  three letter code (default: USD)",
+        "  --markup NUMBER       the markup a new product starts at",
+        "  --min-margin PERCENT  the margin you refuse to go under",
+        "  --lead-time DAYS      lead time when a supplier has none set",
+        "  --safety-days N       days of safety stock in the reorder point",
+        "  --sales-window N      days the sales rate averages over",
+        "  --marketplace-fee P   marketplace commission percentage",
+        "  --payment-fee P       payment processing percentage",
+        "  --tax PERCENT         sales tax or VAT on sales",
+        "  --revenue-target AMT  revenue target for the year",
+        "  --margin-target P     the gross margin you are aiming at",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the example)",
+        "```",
+    ],
+    "sections": INVENTORY_SECTIONS,
+}
+
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
             "cleaning": CLEANING, "handmade": HANDMADE,
             "salon": SALON, "daycare": DAYCARE,
-            "airbnb": AIRBNB, "wedding": WEDDING}
+            "airbnb": AIRBNB, "wedding": WEDDING,
+            "inventory": INVENTORY}
 
 
 # ---------------------------------------------------------------------------

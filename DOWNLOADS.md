@@ -8,6 +8,45 @@ no macros · no charts · formula cells locked, input cells unlocked.
 
 ---
 
+## K. Ultimate Inventory & Wholesale Order Manager
+
+23 tabs · 136,202 formulas · 335 named ranges · 9,308 unlocked input cells.
+For Etsy sellers, small business owners, wholesale distributors, boutiques,
+retail stores, handmade businesses, e-commerce / Amazon / Shopify sellers,
+resellers and small manufacturers. Every tab joined end to end by a **SKU**,
+so one product is one record from the purchase order that brought it in to
+the profit line that says whether it was worth it: a product database where
+every separately stocked variant has its own SKU and a duplicate is flagged,
+a stock tracker with **nothing typed on it at all**, suppliers scored on the
+lead time they actually deliver against the one they quote, purchase orders
+with landed freight, part deliveries and a duplicate-receiving guard, price
+breaks you set yourself checked against cost and your own floor, wholesale
+orders that **reserve stock the moment they are confirmed** and tell you
+what you are short before you promise it, retail sales across ten channels
+with the platform fees taken out, a reorder planner that works out the date
+you have to order by, weighted-average valuation and COGS, stock counts that
+raise a variance instead of overwriting the number, profit by product, and
+printable purchase orders, invoices and picking lists.
+
+| File | What it is | Size |
+|---|---|---|
+| [**inventory-wholesale-order-manager.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/inventory-wholesale-order-manager.xlsx) | Sample-filled demo — a whole fake supply business ("Thornfield Supply Co.", 29 products, 8 suppliers, 15 purchase orders, 16 wholesale orders, 377 retail sales, a nine-day stockout with the purchase order still unsent, an order reserving 90 units for three weeks, and a count eleven candles short) so you can see every alert work | 2.22 MB |
+| [**inventory-wholesale-order-manager-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/inventory-wholesale-order-manager-blank.xlsx) | Empty version — the one you sell / start using | 2.15 MB |
+| [**inventory-wholesale-order-manager-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/inventory-wholesale-order-manager-source.zip) | Python source that builds both files | 370 KB |
+
+Docs: [README_INVENTORY.md](README_INVENTORY.md) · [SOURCE_CODE_INVENTORY.md](SOURCE_CODE_INVENTORY.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_INVENTORY.md) (682 KB)
+
+**Stock is worked out, never typed, and nothing here syncs with a
+marketplace.** The Inventory Tracker has no input cells: what you have is
+opening stock plus receipts minus sales plus returns minus damage plus or
+minus adjustments, each one a row on another tab, so every number has a
+reason behind it. Confirming a wholesale order **reserves** stock rather
+than shipping it, costing is **weighted average throughout**, and orders are
+entered or pasted in by you — there is no live connection to Etsy, Shopify,
+Amazon or anywhere else.
+
+---
+
 ## J. Wedding Photographer Business Manager
 
 23 tabs · 114,996 formulas · 262 named ranges · 8,353 unlocked input cells.

@@ -1,6 +1,6 @@
 # Handmade Product Pricing & Profit Calculator — generator
 
-> **This repository holds nine spreadsheet products** built on the same
+> **This repository holds ten spreadsheet products** built on the same
 > engine, with the same conventions, the same author (Novality Store) and
 > the same `premium` sheet protection:
 >
@@ -29,6 +29,9 @@
 > * **Wedding Photographer Business Manager** —
 >   [README_WEDDING.md](README_WEDDING.md),
 >   `build_wedding_workbook.py`, 23 tabs.
+> * **Ultimate Inventory & Wholesale Order Manager** —
+>   [README_INVENTORY.md](README_INVENTORY.md),
+>   `build_inventory_workbook.py`, 23 tabs.
 >
 > Every download is listed in one place in
 > [DOWNLOADS.md](DOWNLOADS.md).
