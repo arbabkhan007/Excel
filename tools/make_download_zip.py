@@ -371,6 +371,71 @@ nothing it produces is a legal instrument or legal, accounting or
 tax advice.
 """
 
+LANDSCAPING_HOW_TO_RUN = """\
+Ultimate Landscaping & Lawn Care Business Manager
+=================================================
+
+    pip install XlsxWriter
+    python build_landscaping_workbook.py
+
+The workbook appears in:
+
+    output/Ultimate Landscaping & Lawn Care Business Manager.xlsx
+
+Useful options
+--------------
+    --blank                 empty workbook, no example business
+    --rows 600              rows of capacity in the big registers
+    --today 2026-04-01      pretend it is this date (example data)
+    --quiet                 no progress output
+    -o PATH                 write the file somewhere else
+
+Everything else - the labour and charge-out rates, overhead per
+crew hour, target and minimum margins, the minimum visit charge,
+the material markup, the travel rate, the service intervals, the
+season months, every alert threshold and all 44 drop-down lists -
+is on the Settings & Lists tab inside the workbook. You should not
+need to edit the Python to make this fit your business.
+
+The one thing to understand
+---------------------------
+Four IDs hold the file together: Customer ID, Property ID, Job ID
+and Invoice ID. The workbook generates each of them; you never type
+one. Every other tab picks them from a drop-down, which is what
+makes the quote, the work order, the timesheet, the materials used
+and the invoice all the same piece of work. A property belongs to a
+customer, a job belongs to a property, an invoice belongs to a job -
+and the customer's lifetime revenue falls out of that on its own.
+
+A quote is built, not guessed
+-----------------------------
+The quote calculator starts from the lawn area on the property
+record and the minutes in the service catalogue, costs the labour
+at your rate and crew size, adds materials at your markup, the
+equipment, two-way travel and overhead per crew hour, then works
+the price back off the margin you asked for - never going under
+your minimum visit charge. Change a rate on Settings & Lists and
+every open quote reprices.
+
+Every job is costed twice
+-------------------------
+Estimated, from the catalogue minutes and the property's difficulty
+factor. Actual, from the hours the crew logged on the timesheets and
+the fuel, materials and disposal booked against that Job ID. The gap
+between them, visit by visit, is the number that tells you what to
+reprice.
+
+What it will not do
+-------------------
+The route planner organises the stops YOU have chosen onto a
+printable sheet. It is not GPS navigation and it does not optimise
+a route. Nothing in the file syncs with accounting, payroll or
+booking software, and it cannot take a card payment. Timesheet
+totals are gross labour cost for pricing work, not a payroll
+filing - give them to whoever runs your payroll.
+"""
+
+
 INVENTORY_HOW_TO_RUN = """\
 Ultimate Inventory & Wholesale Order Manager
 ============================================
@@ -614,6 +679,21 @@ PRODUCTS = {
                   "tools/check_inventory_specs.py",
                   "tools/check_parens.py"] + SHARED_TOOLS,
         "how_to_run": INVENTORY_HOW_TO_RUN,
+    },
+    "landscaping": {
+        "folder": "ultimate-landscaping-lawn-care-business-manager",
+        "output": os.path.join(
+            "download",
+            "landscaping-lawn-care-business-manager-source.zip"),
+        "files": ["build_landscaping_workbook.py",
+                  "README_LANDSCAPING.md",
+                  "SOURCE_CODE_LANDSCAPING.md"],
+        "trees": ["landscaping_spreadsheet"],
+        "tools": ["tools/validate_landscaping_workbook.py",
+                  "tools/check_landscaping_sample.py",
+                  "tools/check_landscaping_specs.py",
+                  "tools/check_parens.py"] + SHARED_TOOLS,
+        "how_to_run": LANDSCAPING_HOW_TO_RUN,
     },
 }
 

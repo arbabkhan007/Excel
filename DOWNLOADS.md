@@ -8,6 +8,48 @@ no macros · no charts · formula cells locked, input cells unlocked.
 
 ---
 
+## L. Ultimate Landscaping & Lawn Care Business Manager
+
+23 tabs · 172,546 formulas · 662 named ranges · 37,123 unlocked input cells.
+For lawn care rounds, landscaping contractors, grounds maintenance firms,
+gardeners and anybody who turns up at a property with a mower on a trailer.
+Every tab joined end to end by four generated IDs — **Customer ID, Property
+ID, Job ID, Invoice ID** — so one visit is one record from the quote that
+priced it to the profit line that judges it: a customer CRM with lifetime
+revenue and what is owed, a property database holding the lawn area, the
+terrain, the access, the gate code, the dog and a difficulty factor every
+estimate reads, a 30-service catalogue priced per 1,000 sq ft, per visit,
+per hour, per linear foot or per plant, a **quote calculator that prices
+from lawn size, labour, materials, equipment, two-way travel and the margin
+you want** and refuses to go under your minimum visit, work orders that cost
+themselves **twice — estimated and actual** — a printable crew work order
+for one day and one crew, recurring contracts that work out their own next
+visit and warn before they lapse, crew schedules and timesheets with weekly
+overtime, equipment that warns on **engine hours and on months**, a fuel log
+that works out miles per gallon from the odometer, material stock derived
+from purchases and usage, invoices aged from the due date, and a profit
+analysis that says what every month, every service and every customer
+actually made.
+
+| File | What it is | Size |
+|---|---|---|
+| [**landscaping-lawn-care-business-manager.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/landscaping-lawn-care-business-manager.xlsx) | Sample-filled demo — a whole fake grounds care business ("Thornhill Grounds Care", 42 customers, 58 properties, 791 visits, 38 standing contracts, 11 crew, 26 overdue invoices, a mower out of service, a fall cleanup quoted at four hours that took eleven and a half) so you can see every alert work | 2.58 MB |
+| [**landscaping-lawn-care-business-manager-blank.xlsx**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/landscaping-lawn-care-business-manager-blank.xlsx) | Empty version — the one you sell / start using | 2.39 MB |
+| [**landscaping-lawn-care-business-manager-source.zip**](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/download/landscaping-lawn-care-business-manager-source.zip) | Python source that builds both files | 404 KB |
+
+Docs: [README_LANDSCAPING.md](README_LANDSCAPING.md) · [SOURCE_CODE_LANDSCAPING.md](SOURCE_CODE_LANDSCAPING.md) — [download the source doc](https://github.com/arbabkhan007/Excel/raw/refs/heads/arena/89c8bec5-excel/SOURCE_CODE_LANDSCAPING.md) (758 KB)
+
+**The route planner organises stops by hand, and nothing here syncs with
+other software.** It puts the stops *you* have chosen, in the order *you*
+have chosen them, onto one printable sheet with the gate codes and the dog
+warnings — it is **not GPS navigation and it does not optimise a route**.
+The workbook does not sync with accounting, payroll or booking software, it
+cannot take a card payment, and there is no weather feed: you mark a job
+rained off and it tells you what has to be caught up. Timesheets work out
+gross labour cost for pricing work, not a payroll filing.
+
+---
+
 ## K. Ultimate Inventory & Wholesale Order Manager
 
 23 tabs · 136,202 formulas · 335 named ranges · 9,308 unlocked input cells.

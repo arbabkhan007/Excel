@@ -1759,11 +1759,253 @@ INVENTORY = {
 }
 
 
+_LAND = "landscaping_spreadsheet"
+
+LANDSCAPING_SECTIONS = [
+    ("1. Run it",
+     "Save the files below keeping these exact paths, then run the one "
+     "liner. Nothing else is needed - no project file, no build step.\n\n"
+     "```bash\n"
+     "pip install XlsxWriter\n"
+     "python build_landscaping_workbook.py\n"
+     "```\n\n"
+     "The workbook lands in "
+     "`output/Ultimate Landscaping & Lawn Care Business Manager.xlsx`.",
+     ["build_landscaping_workbook.py"]),
+    ("2. The package",
+     "Configuration, the formula template engine, cell formats, the "
+     "sheet writer, the cross sheet names and the worked example. "
+     "These are the parts every tab leans on. `config.py` holds every "
+     "rate, every status set, every alert threshold and every "
+     "disclaimer, so a one-truck mowing round, a landscaping "
+     "contractor and a six-crew grounds maintenance firm can all be "
+     "matched without touching a formula.",
+     [f"{_LAND}/__init__.py",
+      f"{_LAND}/__main__.py",
+      f"{_LAND}/cli.py",
+      f"{_LAND}/config.py",
+      f"{_LAND}/layout.py",
+      f"{_LAND}/formats.py",
+      f"{_LAND}/writer.py",
+      f"{_LAND}/names.py",
+      f"{_LAND}/sample_data.py",
+      f"{_LAND}/build.py"]),
+    ("3. Shared column factories",
+     "The helpers every register uses: automatic ID columns, date, "
+     "month and week keys, ranking columns, alert conditional "
+     "formats, the status-set tests that decide what counts as an "
+     "open job or a live contract, and the customer, property, "
+     "service and job lookups that turn an ID into a name, an "
+     "address, a rate or a price.",
+     [f"{_LAND}/sheets/__init__.py",
+      f"{_LAND}/sheets/common.py"]),
+    ("4. Settings and the two front pages",
+     "Settings & Lists is the only tab a buyer has to fill in before "
+     "anything else works: the business, the labour and charge-out "
+     "rates, the overhead per crew hour, the target and floor "
+     "margins, the minimum visit, the travel rate, the service "
+     "intervals, the season, the targets and 44 drop-down lists. The "
+     "Dashboard is the centrepiece - today's round, the week ahead, "
+     "the work that slipped, the money owed, machines due a service, "
+     "materials running out, and a matrix that counts every alert on "
+     "sixteen registers. Getting Started explains the four IDs and is "
+     "honest about what the workbook is not.",
+     [f"{_LAND}/sheets/settings.py",
+      f"{_LAND}/sheets/dashboard.py",
+      f"{_LAND}/sheets/getting_started.py"]),
+    ("5. Customer, property, service",
+     "Workflow one, and the decision the rest of the product rests "
+     "on. The CRM mints a Customer ID; the Property Database mints a "
+     "Property ID and hangs it off that customer, with the lawn area, "
+     "the drive time, the gate code and the dog; the Service Catalog "
+     "prices the work per 1,000 sq ft, per visit, per hour or per "
+     "plant, and carries the minutes each unit really takes. "
+     "Everything after this joins back through those IDs.",
+     [f"{_LAND}/sheets/customers.py",
+      f"{_LAND}/sheets/properties.py",
+      f"{_LAND}/sheets/services.py"]),
+    ("6. The quote, and the work order it becomes",
+     "Workflow two. The quote calculator starts from the lawn size on "
+     "the property record and the minutes in the catalogue, adds "
+     "labour at your cost rate, materials at your markup, equipment, "
+     "two-way travel and overhead per crew hour, then works the price "
+     "back off the margin you asked for and refuses to go under your "
+     "minimum visit. Accept it and the Job & Work Orders register "
+     "carries the same price through to the invoice, costing itself "
+     "twice on the way: what you estimated, and what the timesheets "
+     "and expenses say it really took.",
+     [f"{_LAND}/sheets/quotes.py",
+      f"{_LAND}/sheets/jobs.py",
+      f"{_LAND}/sheets/route.py"]),
+    ("7. The recurring round",
+     "Workflow three, and the half of this product a one-off job "
+     "sheet does not have. A contract carries a frequency, a visit "
+     "price and a renewal date; it works out its own next visit from "
+     "the last one, tells you when nothing is booked, values itself "
+     "over a year and warns before it lapses. The seasonal planner "
+     "turns the year into four blocks of work with the maintenance "
+     "and inspection checklists the crew actually uses.",
+     [f"{_LAND}/sheets/contracts.py",
+      f"{_LAND}/sheets/seasonal.py"]),
+    ("8. Crew, schedule and payroll hours",
+     "Workflow four. The crew database holds the pay rate, the "
+     "licence expiry and what each person has earned you; the "
+     "schedule compares planned hours against capacity day by day; "
+     "the timesheets split overtime out on a weekly running total, "
+     "cost every hour at that person's rate, and hand the job its "
+     "real labour cost. Gross figures for pricing, not a payroll "
+     "filing - the workbook says so where you can read it.",
+     [f"{_LAND}/sheets/crew.py",
+      f"{_LAND}/sheets/schedule.py",
+      f"{_LAND}/sheets/timesheets.py"]),
+    ("9. Machines, trucks and materials",
+     "Workflow five. Equipment warns twice - on engine hours since "
+     "the last service and on months since it, whichever lands "
+     "first - and the dashboard picks that up. The vehicle tracker "
+     "works out miles per gallon from the odometer readings rather "
+     "than asking you for it. Materials stock is derived from the "
+     "purchases and the usage logged against jobs, so it is never a "
+     "number anybody types over, and it reorders itself when it drops "
+     "to the trigger level.",
+     [f"{_LAND}/sheets/equipment.py",
+      f"{_LAND}/sheets/vehicles.py",
+      f"{_LAND}/sheets/materials.py"]),
+    ("10. Getting paid, and what was left",
+     "Workflow six. Invoices age from the due date rather than the "
+     "invoice date, take part payments, and chase themselves. The "
+     "expense tracker separates a cost that belongs to one visit from "
+     "an overhead that belongs to the month. Customer feedback scores "
+     "the crew and reopens the complaint until somebody closes it. "
+     "Profit analysis, the monthly report and the annual report then "
+     "put fourteen months of revenue, labour, materials, fuel and "
+     "margin into one picture.",
+     [f"{_LAND}/sheets/invoices.py",
+      f"{_LAND}/sheets/expenses.py",
+      f"{_LAND}/sheets/feedback.py",
+      f"{_LAND}/sheets/profit.py",
+      f"{_LAND}/sheets/monthly.py",
+      f"{_LAND}/sheets/annual.py"]),
+    ("11. The quality tools",
+     "Not shipped with the workbook, but the reason it can be "
+     "trusted: a static validator that checks the Customer, Property, "
+     "Job and Invoice joins in both directions and holds the seven "
+     "technical decisions to account, a bracket and placeholder "
+     "checker, a specification checker and a sample data checker that "
+     "both run before the file is written, and a recalculation "
+     "harness that really evaluates every formula.",
+     ["tools/validate_landscaping_workbook.py",
+      "tools/check_parens.py",
+      "tools/check_landscaping_specs.py",
+      "tools/check_landscaping_sample.py",
+      "tools/recalc_check.py"]),
+]
+
+LANDSCAPING = {
+    "package": _LAND,
+    "builder": "build_landscaping_workbook.py",
+    "doc": "README_LANDSCAPING.md",
+    "tabs": 23,
+    "title": "Ultimate Landscaping & Lawn Care Business Manager",
+    "subtitle": ("Complete source code of the generator that writes the "
+                 "`.xlsx` product."),
+    "output": "SOURCE_CODE_LANDSCAPING.md",
+    "closing": ("**Activate the first tab** and close the file - the "
+                "buyer should land on the Dashboard, not on Settings."),
+    "engine_heading": "Ranking columns instead of a hidden engine",
+    "intro": [
+        "Writes a 23 tab `.xlsx` workbook with over 172,000 formulas "
+        "for anybody who cuts grass for a living: a customer CRM and "
+        "a property database joined by ID, with the lawn area, the "
+        "drive time, the gate code and the dog; a service catalogue "
+        "priced per 1,000 sq ft, per visit, per hour, per linear foot "
+        "or per plant; a quote calculator that prices from the lawn "
+        "size, the labour, the materials, the equipment, two-way "
+        "travel and the margin you want; work orders that cost "
+        "themselves twice, estimated and actual; a route planner that "
+        "prints one crew's day on one sheet; recurring contracts that "
+        "work out their own next visit; crew, schedule and timesheets "
+        "with weekly overtime; equipment that warns on engine hours "
+        "and on months; a vehicle and fuel log that works out miles "
+        "per gallon from the odometer; materials stock derived from "
+        "purchases and usage; invoices that age from the due date; "
+        "and a profit analysis that says what every month, every "
+        "service and every customer actually made. Document author "
+        "is **Novality Store**; every formula cell is locked and "
+        "every sheet protected with the password **`premium`**, while "
+        "the cells you are meant to type in stay open.",
+        "",
+        "**Four IDs hold it together.** Customer ID, Property ID, Job "
+        "ID and Invoice ID are generated by the workbook, never "
+        "typed, and every register that refers to one picks it from a "
+        "drop-down. That is the difference between a business manager "
+        "and twenty-three unrelated lists in the same file: a "
+        "property knows whose it is, a job knows which property and "
+        "which contract it came from, an invoice knows which job it "
+        "bills, and the customer's lifetime revenue falls out of the "
+        "arithmetic instead of being counted by hand.",
+        "",
+        "**A quote is built, not guessed.** Lawn size comes off the "
+        "property record, the minutes come off the catalogue, labour "
+        "is costed at your rate and your crew size, materials carry "
+        "your markup, travel is charged both ways, overhead is "
+        "carried per crew hour - and then the price is worked back "
+        "off the margin you asked for, with your minimum visit charge "
+        "as the floor. Change a rate on Settings and every open quote "
+        "reprices.",
+        "",
+        "**Every job is costed twice.** What you estimated, from the "
+        "catalogue minutes and the property's difficulty factor, and "
+        "what it really cost, from the hours the crew logged and the "
+        "fuel, materials and disposal booked against it. The gap "
+        "between those two numbers, job by job and service by "
+        "service, is the thing that tells you which work to keep and "
+        "which to reprice.",
+        "",
+        "Nothing is hard coded. The labour rate, the charge-out rate, "
+        "overhead per hour, target and minimum margins, the minimum "
+        "visit, the material markup, the travel rate per mile, drive "
+        "time between stops, mowing minutes per 1,000 sq ft, quote "
+        "validity, the service intervals in both hours and months, "
+        "the season months, the dormant-customer window, every alert "
+        "threshold, every target and all 44 drop-down lists are "
+        "settings, not assumptions.",
+        "",
+        "Two things it refuses to do, deliberately. The route planner "
+        "organises the stops you have chosen onto a printable sheet - "
+        "it is not GPS navigation and it does not optimise a route. "
+        "And nothing in the file syncs with accounting, payroll or "
+        "booking software: you enter what happened and the formulas "
+        "do the arithmetic. The Getting Started tab says both in "
+        "plain words and the validator fails the build if any cell "
+        "claims otherwise.",
+        "",
+        "Pure Python, one dependency. Tested on XlsxWriter 3.2.0 and "
+        "on the much older 0.3.0, so it does not rely on anything "
+        "recent. The workbook itself is Excel 2010 safe \u2014 no "
+        "dynamic arrays, no `XLOOKUP`, no `IFS`, nothing that needs "
+        "array entry \u2014 and it opens in Google Sheets, "
+        "LibreOffice and Numbers.",
+        "",
+        "```bash",
+        "python build_landscaping_workbook.py --help",
+        "",
+        "  -o, --output PATH     where to write the file",
+        "  --blank               no example data, just the empty workbook",
+        "  --rows N              rows of capacity in the big registers",
+        "  --today YYYY-MM-DD    pretend it is this date (for the example)",
+        "  --quiet               no progress output",
+        "```",
+    ],
+    "sections": LANDSCAPING_SECTIONS,
+}
+
+
 PRODUCTS = {"pet": PET, "social": SOCIAL, "meal": MEAL,
             "cleaning": CLEANING, "handmade": HANDMADE,
             "salon": SALON, "daycare": DAYCARE,
             "airbnb": AIRBNB, "wedding": WEDDING,
-            "inventory": INVENTORY}
+            "inventory": INVENTORY,
+            "landscaping": LANDSCAPING}
 
 
 # ---------------------------------------------------------------------------
